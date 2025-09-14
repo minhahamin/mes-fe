@@ -18,11 +18,77 @@
 # 의존성 설치
 npm install
 
+# 환경 변수 설정
+cp env.example .env
+# .env 파일을 편집하여 실제 값으로 설정
+
 # 개발 서버 실행
 npm run dev
 
 # 빌드
 npm run build
+```
+
+## 환경 변수 설정
+
+프로젝트를 실행하기 전에 환경 변수를 설정해야 합니다.
+
+### 1. 환경 변수 파일 생성
+```bash
+cp env.example .env
+```
+
+### 2. 필수 환경 변수 설정
+`.env` 파일에서 다음 변수들을 설정하세요:
+
+#### API 설정
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
+VITE_WEBSOCKET_URL=ws://localhost:3000/ws
+```
+
+#### MES 시스템 설정
+```env
+VITE_MES_COMPANY_NAME=Your Company
+VITE_MES_FACILITY_ID=FAC001
+VITE_MES_QUALITY_THRESHOLD=95
+```
+
+#### 개발/프로덕션 설정
+```env
+VITE_ENVIRONMENT=development
+VITE_ENABLE_DEBUG_MODE=true
+```
+
+### 3. 환경별 설정
+
+#### 개발 환경
+```env
+VITE_ENVIRONMENT=development
+VITE_ENABLE_DEBUG_MODE=true
+VITE_MOCK_API=true
+```
+
+#### 프로덕션 환경
+```env
+VITE_ENVIRONMENT=production
+VITE_ENABLE_DEBUG_MODE=false
+VITE_MOCK_API=false
+VITE_SENTRY_DSN=your_sentry_dsn
+```
+
+### 4. 환경 변수 사용법
+
+```typescript
+import { env } from '@/utils/env';
+
+// 기본 사용법
+const apiUrl = env.get('API_BASE_URL');
+const isDebug = env.isDebugMode();
+
+// MES 특화 메서드
+const companyName = env.getCompanyName();
+const qualityThreshold = env.getQualityThreshold();
 ```
 
 ## 프로젝트 구조

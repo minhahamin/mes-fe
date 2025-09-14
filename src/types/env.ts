@@ -1,0 +1,119 @@
+// Environment variables type definitions
+export interface EnvConfig {
+  // Application
+  APP_NAME: string;
+  APP_VERSION: string;
+  APP_DESCRIPTION: string;
+  
+  // API Configuration
+  API_BASE_URL: string;
+  API_TIMEOUT: number;
+  API_RETRY_ATTEMPTS: number;
+  
+  // Authentication
+  AUTH_TOKEN_KEY: string;
+  AUTH_REFRESH_TOKEN_KEY: string;
+  AUTH_TOKEN_EXPIRY: number;
+  
+  // Feature Flags
+  ENABLE_DEBUG_MODE: boolean;
+  ENABLE_ANALYTICS: boolean;
+  ENABLE_MAINTENANCE_MODE: boolean;
+  
+  // External Services
+  WEBSOCKET_URL: string;
+  FILE_UPLOAD_URL: string;
+  REPORT_GENERATION_URL: string;
+  
+  // Database
+  DB_NAME: string;
+  DB_VERSION: number;
+  CACHE_EXPIRY: number;
+  
+  // UI Configuration
+  THEME: 'light' | 'dark';
+  LANGUAGE: string;
+  TIMEZONE: string;
+  DATE_FORMAT: string;
+  TIME_FORMAT: string;
+  
+  // Production Settings
+  ENVIRONMENT: 'development' | 'staging' | 'production';
+  LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
+  SENTRY_DSN?: string;
+  GOOGLE_ANALYTICS_ID?: string;
+  
+  // MES Specific
+  MES_COMPANY_NAME: string;
+  MES_FACILITY_ID: string;
+  MES_SHIFT_DURATION: number;
+  MES_BREAK_DURATION: number;
+  MES_QUALITY_THRESHOLD: number;
+  MES_INVENTORY_WARNING_THRESHOLD: number;
+  MES_EQUIPMENT_CHECK_INTERVAL: number;
+  
+  // Development Only
+  MOCK_API: boolean;
+  MOCK_DELAY: number;
+  HOT_RELOAD: boolean;
+}
+
+// Environment variable names mapping
+export const ENV_KEYS = {
+  // Application
+  APP_NAME: 'VITE_APP_NAME',
+  APP_VERSION: 'VITE_APP_VERSION',
+  APP_DESCRIPTION: 'VITE_APP_DESCRIPTION',
+  
+  // API Configuration
+  API_BASE_URL: 'VITE_API_BASE_URL',
+  API_TIMEOUT: 'VITE_API_TIMEOUT',
+  API_RETRY_ATTEMPTS: 'VITE_API_RETRY_ATTEMPTS',
+  
+  // Authentication
+  AUTH_TOKEN_KEY: 'VITE_AUTH_TOKEN_KEY',
+  AUTH_REFRESH_TOKEN_KEY: 'VITE_AUTH_REFRESH_TOKEN_KEY',
+  AUTH_TOKEN_EXPIRY: 'VITE_AUTH_TOKEN_EXPIRY',
+  
+  // Feature Flags
+  ENABLE_DEBUG_MODE: 'VITE_ENABLE_DEBUG_MODE',
+  ENABLE_ANALYTICS: 'VITE_ENABLE_ANALYTICS',
+  ENABLE_MAINTENANCE_MODE: 'VITE_ENABLE_MAINTENANCE_MODE',
+  
+  // External Services
+  WEBSOCKET_URL: 'VITE_WEBSOCKET_URL',
+  FILE_UPLOAD_URL: 'VITE_FILE_UPLOAD_URL',
+  REPORT_GENERATION_URL: 'VITE_REPORT_GENERATION_URL',
+  
+  // Database
+  DB_NAME: 'VITE_DB_NAME',
+  DB_VERSION: 'VITE_DB_VERSION',
+  CACHE_EXPIRY: 'VITE_CACHE_EXPIRY',
+  
+  // UI Configuration
+  THEME: 'VITE_THEME',
+  LANGUAGE: 'VITE_LANGUAGE',
+  TIMEZONE: 'VITE_TIMEZONE',
+  DATE_FORMAT: 'VITE_DATE_FORMAT',
+  TIME_FORMAT: 'VITE_TIME_FORMAT',
+  
+  // Production Settings
+  ENVIRONMENT: 'VITE_ENVIRONMENT',
+  LOG_LEVEL: 'VITE_LOG_LEVEL',
+  SENTRY_DSN: 'VITE_SENTRY_DSN',
+  GOOGLE_ANALYTICS_ID: 'VITE_GOOGLE_ANALYTICS_ID',
+  
+  // MES Specific
+  MES_COMPANY_NAME: 'VITE_MES_COMPANY_NAME',
+  MES_FACILITY_ID: 'VITE_MES_FACILITY_ID',
+  MES_SHIFT_DURATION: 'VITE_MES_SHIFT_DURATION',
+  MES_BREAK_DURATION: 'VITE_MES_BREAK_DURATION',
+  MES_QUALITY_THRESHOLD: 'VITE_MES_QUALITY_THRESHOLD',
+  MES_INVENTORY_WARNING_THRESHOLD: 'VITE_MES_INVENTORY_WARNING_THRESHOLD',
+  MES_EQUIPMENT_CHECK_INTERVAL: 'VITE_MES_EQUIPMENT_CHECK_INTERVAL',
+  
+  // Development Only
+  MOCK_API: 'VITE_MOCK_API',
+  MOCK_DELAY: 'VITE_MOCK_DELAY',
+  HOT_RELOAD: 'VITE_HOT_RELOAD',
+} as const;
