@@ -50,47 +50,37 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* 로고 및 브랜드 */}
-            <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                {/* MES 로고 - 제조업체 아이콘 */}
-                <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {env.getCompanyName() || 'MES'}
-                  </h1>
-                  <p className="text-xs text-gray-500">
-                    제조 실행 시스템
-                  </p>
-                </div>
+      <header className="header-modern">
+        <div className="header-container">
+          <div className="header-content">
+            {/* 왼쪽 브랜드 영역 */}
+            <div className="header-brand">
+              <div className="brand-info">
+                <h1 className="brand-title">
+                  {env.getCompanyName() || '한국제조공업'} <span className="brand-version">MES V1.0</span>
+                </h1>
+                <p className="brand-copyright">© 2024</p>
               </div>
             </div>
 
             {/* 중앙 네비게이션 */}
-            <nav className="hidden md:flex space-x-8">
-              <a href="/dashboard" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            <nav className="header-nav">
+              <a href="/dashboard" className="nav-link">
                 대시보드
               </a>
-              <a href="/production" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+              <a href="/production" className="nav-link">
                 생산관리
               </a>
-              <a href="/quality" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+              <a href="/quality" className="nav-link">
                 품질관리
               </a>
-              <a href="/inventory" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+              <a href="/inventory" className="nav-link">
                 재고관리
               </a>
             </nav>
 
             {/* 우측 액션 버튼들 */}
-            <div className="flex items-center space-x-4">
+            <div className="header-actions">
               {/* 알림 버튼 */}
               <div className="relative">
                 <button
@@ -139,51 +129,64 @@ const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
 
-              {/* 사용자 메뉴 */}
+              {/* 로그아웃 버튼 */}
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                className="logout-btn"
+              >
+                로그아웃
+              </button>
+
+              {/* 사용자 정보 */}
               {user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-white text-sm font-medium">
-                          {user.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
+                <div className="user-info-container">
+                  <div className="user-avatar">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="user-avatar-img"
+                      />
+                    ) : (
+                      <div className="user-avatar-placeholder">
+                        <svg className="user-avatar-icon" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="user-details">
+                    <div className="user-welcome">
+                      <span className="welcome-text">Welcome,</span>
+                      <button
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="user-dropdown-trigger"
+                      >
+                        <span className="user-name">{user.name}</span>
+                        <svg className="dropdown-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     </div>
-                    <div className="hidden md:block text-left">
-                      <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.role}</p>
-                    </div>
-                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                    <p className="user-role">{user.role}</p>
+                  </div>
 
                   {/* 사용자 드롭다운 메뉴 */}
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                      <div className="p-3 border-b border-gray-200">
-                        <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                    <div className="user-dropdown">
+                      <div className="user-dropdown-header">
+                        <p className="user-dropdown-name">{user.name}</p>
+                        <p className="user-dropdown-email">{user.email}</p>
                       </div>
-                      <div className="py-1">
+                      <div className="user-dropdown-menu">
                         <button
                           onClick={() => {
                             onProfileClick?.();
                             setShowUserMenu(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="user-dropdown-item"
                         >
-                          <svg className="h-4 w-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="dropdown-item-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                           프로필
@@ -193,30 +196,20 @@ const Header: React.FC<HeaderProps> = ({
                             onSettingsClick?.();
                             setShowUserMenu(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="user-dropdown-item"
                         >
-                          <svg className="h-4 w-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="dropdown-item-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                           설정
-                        </button>
-                        <hr className="my-1" />
-                        <button
-                          onClick={() => setShowLogoutModal(true)}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                        >
-                          <svg className="h-4 w-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                          </svg>
-                          로그아웃
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div className="login-container">
                   <Button
                     variant="outline"
                     size="sm"
@@ -246,7 +239,7 @@ const Header: React.FC<HeaderProps> = ({
       {/* 오버레이 - 메뉴 외부 클릭 시 닫기 */}
       {(showUserMenu || showNotifications) && (
         <div
-          className="fixed inset-0 z-40"
+          className="overlay"
           onClick={() => {
             setShowUserMenu(false);
             setShowNotifications(false);
