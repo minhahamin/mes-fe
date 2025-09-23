@@ -16,6 +16,11 @@ import InventoryInfo from './pages/inventoryInfo';
 import ProductionPlanInfo from './pages/productionPlanInfo';
 import ProductionOrderInfo from './pages/productionOrderInfo';
 import ProductionStatusInfo from './pages/productionStatusInfo';
+import OrderReceiptInfo from './pages/orderReceiptInfo';
+import OrderingInfo from './pages/orderingInfo';
+import WarehouseInfo from './pages/warehouseInfo';
+import ShipmentInfo from './pages/shipmentInfo';
+import DeliveryInfo from './pages/deliveryInfo';
 import MultiTabExample from './pages/multiTabExample';
 
 // 404 페이지 컴포넌트
@@ -124,15 +129,15 @@ const App: React.FC = () => {
           path="/business/orderreceipt"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <OrderReceiptInfo />
             </ProtectedRoute>
           }
         />
-            <Route
+        <Route
           path="/business/ordering"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <OrderingInfo />
             </ProtectedRoute>
           }
         />
@@ -140,7 +145,7 @@ const App: React.FC = () => {
           path="/business/warehouse"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <WarehouseInfo />
             </ProtectedRoute>
           }
         />
@@ -148,7 +153,7 @@ const App: React.FC = () => {
           path="/business/shipment"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <ShipmentInfo />
             </ProtectedRoute>
           }
         />
@@ -156,7 +161,7 @@ const App: React.FC = () => {
           path="/business/delivery"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <DeliveryInfo />
             </ProtectedRoute>
           }
         />
