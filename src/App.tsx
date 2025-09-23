@@ -4,12 +4,18 @@ import Header from './component/layout/header';
 import Login from './pages/login';
 import Dashboard from './pages/dashboard';
 import Production from './pages/production';
-import Quality from './pages/quality';
-import Inventory from './pages/inventory';
 import Settings from './pages/settings';
 import BusinessInfo from './pages/businessInfo';
 import CustomerInfo from './pages/customerInfo';
 import EmployeeInfo from './pages/employeeInfo';
+import ProductInfo from './pages/productInfo';
+import QualityInfo from './pages/qualityInfo';
+import ClaimInfo from './pages/claimInfo';
+import InventoryStatusInfo from './pages/inventoryStatusInfo';
+import InventoryInfo from './pages/inventoryInfo';
+import ProductionPlanInfo from './pages/productionPlanInfo';
+import ProductionOrderInfo from './pages/productionOrderInfo';
+import ProductionStatusInfo from './pages/productionStatusInfo';
 import MultiTabExample from './pages/multiTabExample';
 
 // 404 페이지 컴포넌트
@@ -107,6 +113,119 @@ const App: React.FC = () => {
           }
         />
         <Route
+          path="/basic/productinfo"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/business/orderreceipt"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+            <Route
+          path="/business/ordering"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/business/warehouse"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/business/shipment"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/business/delivery"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/production/productionplan"
+          element={
+            <ProtectedRoute>
+              <ProductionPlanInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/production/productionorder"
+          element={
+            <ProtectedRoute>
+              <ProductionOrderInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/production/productionstatus"
+          element={
+            <ProtectedRoute>
+              <ProductionStatusInfo />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/quality/qualityinfo"
+          element={
+            <ProtectedRoute>
+              <QualityInfo />
+            </ProtectedRoute>
+          }
+        />
+           <Route
+          path="/quality/claiminfo"
+          element={
+            <ProtectedRoute>
+              <ClaimInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inventory/inventorystatus"
+          element={
+            <ProtectedRoute>
+              <InventoryStatusInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inventory/inventoryinfo"
+          element={
+            <ProtectedRoute>
+              <InventoryInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/orderwarehousestatus"
+          element={
+            <ProtectedRoute>
+              <ProductInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/multitab"
           element={
             <ProtectedRoute>
@@ -114,38 +233,7 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/production"
-          element={
-            <ProtectedRoute>
-              <Production />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/quality"
-          element={
-            <ProtectedRoute>
-              <Quality />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inventory"
-          element={
-            <ProtectedRoute>
-              <Inventory />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
+      
         
         {/* 404 페이지 */}
         <Route path="*" element={<NotFound />} />
