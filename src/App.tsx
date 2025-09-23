@@ -21,6 +21,7 @@ import OrderingInfo from './pages/orderingInfo';
 import WarehouseInfo from './pages/warehouseInfo';
 import ShipmentInfo from './pages/shipmentInfo';
 import DeliveryInfo from './pages/deliveryInfo';
+import OrderWarehouseStatusInfo from './pages/orderWarehouseStatusInfo';
 import MultiTabExample from './pages/multiTabExample';
 
 // 404 페이지 컴포넌트
@@ -226,7 +227,7 @@ const App: React.FC = () => {
           path="/reports/orderwarehousestatus"
           element={
             <ProtectedRoute>
-              <ProductInfo />
+              <OrderWarehouseStatusInfo />
             </ProtectedRoute>
           }
         />
