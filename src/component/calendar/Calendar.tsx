@@ -7,9 +7,11 @@ interface CalendarEvent {
   id: string;
   title: string;
   date: Date;
+  endDate?: Date; // 범위 이벤트를 위한 종료 날짜
   type: 'production' | 'maintenance' | 'meeting' | 'inspection' | 'other';
   priority: 'high' | 'medium' | 'low';
   description?: string;
+  isRange?: boolean; // 범위 이벤트 여부
 }
 
 interface CalendarProps {
@@ -54,11 +56,20 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
   };
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => 
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
-    );
+    return events.filter(event => {
+      const eventDate = event.date;
+      const eventEndDate = event.endDate || event.date;
+      
+      // 범위 이벤트인 경우
+      if (event.isRange && event.endDate) {
+        return date >= eventDate && date <= eventEndDate;
+      }
+      
+      // 일반 이벤트인 경우
+      return eventDate.getDate() === date.getDate() &&
+             eventDate.getMonth() === date.getMonth() &&
+             eventDate.getFullYear() === date.getFullYear();
+    });
   };
 
   const handleDateClick = (date: Date) => {
@@ -91,7 +102,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
            <span className="text-gray-700">◀</span>
         </button>
         <h2 className="text-3xl font-bold text-blue-600 mx-6 mr-6">
-          {value.getMonth() + 1}월
+          {value.getFullYear()}년 {value.getMonth() + 1}월
         </h2>
         <button
           onClick={handleNextMonth}
@@ -106,7 +117,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
       </div>
 
       <Calendar
-        onChange={(value: any, event: React.MouseEvent<HTMLButtonElement>) => {
+        onChange={(value: any) => {
           if (value instanceof Date) {
             onChange(value);
           }
@@ -123,7 +134,53 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
           return `${date.getMonth() + 1}월`;
         }}
         tileContent={({ date, view }: { date: Date; view: string }) => {
-          // 기본 날짜 표시를 사용하므로 추가 내용 없음
+          if (view === 'month') {
+            const dayEvents = getEventsForDate(date);
+            return (
+              <div className="flex flex-col h-full">
+                {/* 이벤트 목록만 표시 (날짜는 react-calendar가 자동 표시) */}
+                {dayEvents.length > 0 && (
+                  <div className="space-y-1 w-full mt-1">
+                    {dayEvents.slice(0, 2).map((event) => {
+                      const isRangeStart = event.isRange && event.date.getTime() === date.getTime();
+                      const isRangeEnd = event.isRange && event.endDate && event.endDate.getTime() === date.getTime();
+                      const isRangeMiddle = event.isRange && event.endDate && 
+                        date > event.date && date < event.endDate;
+                      
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEventClick(event);
+                          }}
+                          className={`
+                            text-xs p-1 rounded cursor-pointer truncate border-l-2
+                            ${getEventTypeColor(event.type)}
+                            ${getPriorityColor(event.priority)}
+                            hover:shadow-sm
+                            ${isRangeStart ? 'rounded-l-none' : ''}
+                            ${isRangeEnd ? 'rounded-r-none' : ''}
+                            ${isRangeMiddle ? 'rounded-none' : ''}
+                          `}
+                          title={event.title}
+                        >
+                          {isRangeStart && event.isRange ? event.title : 
+                           isRangeMiddle ? '' : 
+                           isRangeEnd ? event.title : event.title}
+                        </div>
+                      );
+                    })}
+                    {dayEvents.length > 2 && (
+                      <div className="text-xs text-gray-500 text-center">
+                        +{dayEvents.length - 2}개 더
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          }
           return null;
         }}
         tileClassName={({ date, view }: { date: Date; view: string }) => {

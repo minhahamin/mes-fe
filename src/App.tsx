@@ -7,6 +7,10 @@ import Production from './pages/production';
 import Quality from './pages/quality';
 import Inventory from './pages/inventory';
 import Settings from './pages/settings';
+import BusinessInfo from './pages/businessInfo';
+import CustomerInfo from './pages/customerInfo';
+import EmployeeInfo from './pages/employeeInfo';
+import MultiTabExample from './pages/multiTabExample';
 
 // 404 페이지 컴포넌트
 const NotFound: React.FC = () => (
@@ -32,37 +36,9 @@ const NotFound: React.FC = () => (
 
 // 메인 레이아웃 컴포넌트
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 임시 사용자 데이터 (실제로는 로그인 상태에서 가져와야 함)
-  const user = {
-    id: '1',
-    name: '김민하',
-    email: 'minha@company.com',
-    role: '생산 관리자',
-  };
-
-  const handleLogout = () => {
-    // 로그아웃 로직
-    console.log('로그아웃');
-    window.location.href = '/login';
-  };
-
-  const handleProfileClick = () => {
-    console.log('프로필 클릭');
-  };
-
-  const handleSettingsClick = () => {
-    console.log('설정 클릭');
-    window.location.href = '/settings';
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header
-        user={user}
-        onLogout={handleLogout}
-        onProfileClick={handleProfileClick}
-        onSettingsClick={handleSettingsClick}
-      />
+      <Header />
       <main>
         {children}
       </main>
@@ -103,6 +79,38 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/basic/businessinfo"
+          element={
+            <ProtectedRoute>
+              <BusinessInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/basic/customerinfo"
+          element={
+            <ProtectedRoute>
+              <CustomerInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/basic/employeeinfo"
+          element={
+            <ProtectedRoute>
+              <EmployeeInfo />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/multitab"
+          element={
+            <ProtectedRoute>
+              <MultiTabExample />
             </ProtectedRoute>
           }
         />
