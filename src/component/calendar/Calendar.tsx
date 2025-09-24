@@ -176,11 +176,28 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
           if (view === 'month') {
             const dayEvents = getEventsForDate(date);
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {/* 이벤트 목록만 표시 (날짜는 react-calendar가 자동 표시) */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%',
+                width: '100%',
+                alignItems: 'flex-end'
+              }}>
+                {/* 이벤트 목록을 날짜 숫자 아래에 표시 */}
                 {dayEvents.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', marginTop: '4px' }}>
-                    {dayEvents.slice(0, 2).map((event) => {
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '2px', 
+                    width: '100%',
+                    marginTop: 'auto',
+                    paddingTop: '4px',
+                    maxHeight: '60px',
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#cbd5e1 transparent'
+                  }}>
+                    {dayEvents.map((event) => {
                       const isRangeStart = event.isRange && event.date.getTime() === date.getTime();
                       const isRangeEnd = event.isRange && event.endDate && event.endDate.getTime() === date.getTime();
                       const isRangeMiddle = event.isRange && event.endDate && 
@@ -197,15 +214,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
                             handleEventClick(event);
                           }}
                           style={{
-                            fontSize: '12px',
-                            padding: '4px',
-                            borderRadius: isRangeStart ? '4px 0 0 4px' : 
-                                         isRangeEnd ? '0 4px 4px 0' : 
-                                         isRangeMiddle ? '0' : '4px',
+                            fontSize: '10px',
+                            padding: '2px 4px',
+                            borderRadius: isRangeStart ? '3px 0 0 3px' : 
+                                         isRangeEnd ? '0 3px 3px 0' : 
+                                         isRangeMiddle ? '0' : '3px',
                             cursor: 'pointer',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            width: '100%',
+                            flexShrink: 0,
                             ...typeColors,
                             ...priorityColors,
                             transition: 'box-shadow 0.2s ease'
@@ -224,15 +243,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
                         </div>
                       );
                     })}
-                    {dayEvents.length > 2 && (
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        textAlign: 'center'
-                      }}>
-                        +{dayEvents.length - 2}개 더
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

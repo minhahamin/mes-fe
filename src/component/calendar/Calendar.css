@@ -51,15 +51,17 @@
 }
 
 .react-calendar__tile {
-  height: 80px;
+  height: 100px;
   padding: 8px;
   border-right: 1px solid #dbeafe;
   border-bottom: 1px solid #dbeafe;
   background: white;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
   position: relative;
+  overflow: hidden;
 }
 
 .react-calendar__tile:last-child {
@@ -92,6 +94,8 @@
   font-size: 14px;
   font-weight: 500;
   color: inherit;
+  margin-bottom: 4px;
+  align-self: flex-end;
 }
 
 /* 6일 특별 스타일 */
@@ -115,4 +119,22 @@
 
 .today-day {
   background-color: #dbeafe !important;
+}
+
+/* 스크롤바 스타일링 (웹킷 브라우저용) */
+.react-calendar__tile::-webkit-scrollbar {
+  width: 4px;
+}
+
+.react-calendar__tile::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.react-calendar__tile::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 2px;
+}
+
+.react-calendar__tile::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
 }
