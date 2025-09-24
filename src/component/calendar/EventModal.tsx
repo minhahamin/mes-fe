@@ -80,149 +80,398 @@ const EventModal: React.FC<EventModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4" 
       style={{ 
         position: 'fixed', 
         top: 0, 
         left: 0, 
         right: 0, 
         bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        padding: '16px'
       }}
     >
       <div 
-        className="bg-white rounded-lg max-w-md  transform transition-all duration-300 ease-out scale-100" 
         style={{ 
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          maxWidth: '448px',
+          width: '100%',
           position: 'relative', 
           zIndex: 10000,
           margin: 'auto',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 20px -5px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 20px -5px rgba(0, 0, 0, 0.1)',
+          transform: 'scale(1)',
+          transition: 'all 0.3s ease-out'
         }}
       >
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '24px',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            margin: 0
+          }}>
             {event ? '일정 수정' : '새 일정 추가'}
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors bg-red-500"
+            style={{
+              color: '#9ca3af',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              padding: '8px',
+              borderRadius: '50%'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = '#6b7280';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = '#9ca3af';
+            }}
           >
-            <span className="text-gray-400 hover:text-gray-600 transition-colors  rounded-full p-2">
-              X
-            </span>
+            <span style={{ fontSize: '16px', fontWeight: 'bold' }}>×</span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* 제목 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-blue-500 rounded-full mr-2"></span>
-              제목 *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-              placeholder="일정 제목을 입력하세요"
-              required
-            />
+        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+          {/* 그리드 레이아웃 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '54px',
+            width: '90%',
+            marginBottom: '24px'
+          }}>
+            {/* 제목 */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '2px',
+                  marginRight: '8px'
+                }}></span>
+                제목 *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#f9fafb',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.backgroundColor = '#f9fafb';
+                  e.target.style.boxShadow = 'none';
+                }}
+                placeholder="일정 제목을 입력하세요"
+                required
+              />
+            </div>
+
+            {/* 날짜 */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#22c55e',
+                  borderRadius: '2px',
+                  marginRight: '8px'
+                }}></span>
+                날짜 *
+              </label>
+              <input
+                type="date"
+                value={format(formData.date, 'yyyy-MM-dd')}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: new Date(e.target.value) }))}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#f9fafb',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#22c55e';
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.backgroundColor = '#f9fafb';
+                  e.target.style.boxShadow = 'none';
+                }}
+                required
+              />
+            </div>
+
+            {/* 유형 */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#8b5cf6',
+                  borderRadius: '2px',
+                  marginRight: '8px'
+                }}></span>
+                유형
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as CalendarEvent['type'] }))}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#f9fafb',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#8b5cf6';
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.backgroundColor = '#f9fafb';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                <option value="production">🏭 생산</option>
+                <option value="maintenance">🔧 점검</option>
+                <option value="meeting">👥 회의</option>
+                <option value="inspection">🔍 검사</option>
+                <option value="other">📝 기타</option>
+              </select>
+            </div>
+
+            {/* 우선순위 */}
+            <div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#f97316',
+                  borderRadius: '2px',
+                  marginRight: '8px'
+                }}></span>
+                우선순위
+              </label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as CalendarEvent['priority'] }))}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#f9fafb',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#f97316';
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#e5e7eb';
+                  e.target.style.backgroundColor = '#f9fafb';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                <option value="low">🟢 낮음</option>
+                <option value="medium">🟡 보통</option>
+                <option value="high">🔴 높음</option>
+              </select>
+            </div>
           </div>
 
-          {/* 날짜 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-green-500 rounded-full mr-2"></span>
-              날짜 *
-            </label>
-            <input
-              type="date"
-              value={format(formData.date, 'yyyy-MM-dd')}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: new Date(e.target.value) }))}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-              required
-            />
-          </div>
-
-          {/* 유형 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-purple-500 rounded-full mr-2"></span>
-              유형
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as CalendarEvent['type'] }))}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-            >
-              <option value="production">🏭 생산</option>
-              <option value="maintenance">🔧 점검</option>
-              <option value="meeting">👥 회의</option>
-              <option value="inspection">🔍 검사</option>
-              <option value="other">📝 기타</option>
-            </select>
-          </div>
-
-          {/* 우선순위 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-orange-500 rounded-full mr-2"></span>
-              우선순위
-            </label>
-            <select
-              value={formData.priority}
-              onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as CalendarEvent['priority'] }))}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-            >
-              <option value="low">🟢 낮음</option>
-              <option value="medium">🟡 보통</option>
-              <option value="high">🔴 높음</option>
-            </select>
-          </div>
-
-          {/* 설명 */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-indigo-500 rounded-full mr-2"></span>
+          {/* 설명 - 전체 너비 */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              <span style={{
+                width: '4px',
+                height: '16px',
+                backgroundColor: '#6366f1',
+                borderRadius: '2px',
+                marginRight: '8px'
+              }}></span>
               설명
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-50 focus:bg-white resize-none"
+              style={{
+                width: '87%',
+                padding: '12px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                backgroundColor: '#f9fafb',
+                transition: 'all 0.2s ease',
+                resize: 'none',
+                fontFamily: 'inherit'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#6366f1';
+                e.target.style.backgroundColor = 'white';
+                e.target.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.backgroundColor = '#f9fafb';
+                e.target.style.boxShadow = 'none';
+              }}
               placeholder="일정에 대한 설명을 입력하세요"
             />
           </div>
 
           {/* 버튼 */}
-          <div className="flex items-center justify-between pt-4">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: '16px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
             <div>
               {event && onDelete && (
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="px-4 py-2 text-red-600 hover:text-red-800 font-medium transition-colors"
+                  style={{
+                    padding: '8px 16px',
+                    color: '#dc2626',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.color = '#991b1b';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.color = '#dc2626';
+                  }}
                 >
                   삭제
                 </button>
               )}
             </div>
-            <div className="flex space-x-3">
+            <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+                style={{
+                  padding: '8px 16px',
+                  color: '#6b7280',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = '#374151';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = '#6b7280';
+                }}
               >
                 취소
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1d4ed8';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                }}
               >
                 {event ? '수정' : '추가'}
               </button>

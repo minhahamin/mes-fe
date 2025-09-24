@@ -208,30 +208,89 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb'
+    }}>
       {/* 헤더 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+      <div style={{
+        backgroundColor: 'white',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        borderBottom: '1px solid #e5e7eb'
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '0 16px'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '24px 0'
+          }}>
             <div>
-             
-             
+              <h1 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: 0
+              }}>대시보드</h1>
+              <p style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: '4px 0 0 0'
+              }}>일정 관리 및 캘린더</p>
             </div>
-            <div className="flex space-x-3 p-4">
-              <Button 
-                variant="primary" 
-                size="sm"
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              padding: '16px'
+            }}>
+              <button 
                 onClick={() => handleAddEvent(new Date())}
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1d4ed8';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
                 새 일정 추가
-              </Button>
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* 메인 콘텐츠 - 달력만 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '32px 16px'
+      }}>
         <Calendar 
           events={events}
           onEventClick={handleEventClick}

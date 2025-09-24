@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import StatCard from '../component/business/StatCard';
 import TableRow from '../component/business/TableRow';
 import BusinessModal from '../component/business/BusinessModal';
 import { BusinessData } from '../types/business';
+import { createBusiness, updateBusiness, deleteBusiness, getBusinesses } from '../api/businessApi';
 
 // 스타일 상수
 const STYLES = {
@@ -62,12 +63,31 @@ const BusinessInfo: React.FC = () => {
   // 상태 관리
   const [businessData, setBusinessData] = useState<BusinessData[]>(INITIAL_DATA);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<BusinessData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 데이터 로드
+  useEffect(() => {
+    loadBusinesses();
+  }, []);
+
+  const loadBusinesses = async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setBusinessData(response.data);
+      }
+    } catch (error) {
+      console.error('사업장 정보 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
-    setFormData({});
+    
     setEditingId(null);
     setShowForm(true);
   }, []);
@@ -75,47 +95,39 @@ const BusinessInfo: React.FC = () => {
   const handleEdit = useCallback((id: number) => {
     const item = businessData.find(d => d.id === id);
     if (item) {
-      setFormData(item);
+      
       setEditingId(id);
       setShowForm(true);
     }
   }, [businessData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setBusinessData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          alert(response.message);
+          await loadBusinesses(); // 데이터 다시 로드
+        } else {
+          alert(response.error || '삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('삭제 실패:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!formData.companyName || !formData.businessNumber || !formData.ceoName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      setBusinessData(prev => prev.map(d => 
-        d.id === editingId ? { ...d, ...formData } as BusinessData : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...businessData.map(d => d.id), 0) + 1;
-      setBusinessData(prev => [...prev, { ...formData, id: newId } as BusinessData]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, businessData]);
+  const handleModalSuccess = useCallback(async () => {
+    await loadBusinesses(); // 데이터 다시 로드
+  }, []);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
-    setFormData({});
     setEditingId(null);
-  }, []);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
   return (
@@ -365,10 +377,9 @@ const BusinessInfo: React.FC = () => {
       <BusinessModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
+        initialData={editingId ? businessData.find(d => d.id === editingId) : undefined}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );

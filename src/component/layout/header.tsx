@@ -41,6 +41,16 @@ const Header: React.FC = () => {
   return (
     <nav className="navbar">
       <div className="nav-container">
+        {/* 홈 버튼 */}
+        <div className="nav-item">
+          <a href="/dashboard" className="nav-link" style={{ textDecoration: 'none', color: 'white' }}>
+            <svg width="16" height="16" fill="white" viewBox="0 0 24 24" style={{ marginRight: '8px' }}>
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            홈
+          </a>
+        </div>
+        
         {menus.map((category) => (
           <div
             key={category.id}

@@ -1,34 +1,108 @@
-import React from 'react';
-
-interface BusinessData {
-  id: number;
-  companyName: string;
-  businessNumber: string;
-  ceoName: string;
-  address: string;
-  phone: string;
-  email: string;
-  industry: string;
-  establishedDate: string;
-}
+import React, { useState, useEffect } from 'react';
+import { BusinessData } from '../../types/business';
+import { createBusiness, updateBusiness } from '../../api/businessApi';
 
 interface BusinessModalProps {
   show: boolean;
   editingId: number | null;
-  formData: Partial<BusinessData>;
+  initialData?: Partial<BusinessData>;
   onClose: () => void;
-  onSave: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSuccess: () => void;
 }
 
 const BusinessModal: React.FC<BusinessModalProps> = ({ 
   show, 
   editingId, 
-  formData, 
+  initialData,
   onClose, 
-  onSave, 
-  onInputChange 
+  onSuccess
 }) => {
+  const [formData, setFormData] = useState<Partial<BusinessData>>({});
+  const [loading, setLoading] = useState(false);
+
+  // 초기 데이터 설정
+  useEffect(() => {
+    if (show) {
+      if (editingId && initialData) {
+        setFormData(initialData);
+      } else {
+        setFormData({});
+      }
+    }
+  }, [show, editingId, initialData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // 사업자번호 자동 하이픈 처리
+    if (name === 'businessNumber') {
+      const cleanValue = value.replace(/[^0-9]/g, ''); // 숫자만 추출
+      let formattedValue = cleanValue;
+      
+      if (cleanValue.length >= 3) {
+        formattedValue = cleanValue.slice(0, 3) + '-' + cleanValue.slice(3);
+      }
+      if (cleanValue.length >= 5) {
+        formattedValue = cleanValue.slice(0, 3) + '-' + cleanValue.slice(3, 5) + '-' + cleanValue.slice(5, 10);
+      }
+      
+      setFormData(prev => ({ ...prev, [name]: formattedValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.companyName || !formData.businessNumber || !formData.ceoName) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let response;
+
+      if (editingId) {
+        // 수정
+        response = await updateBusiness({
+          id: editingId,
+          companyName: formData.companyName!,
+          businessNumber: formData.businessNumber!,
+          ceoName: formData.ceoName!,
+          address: formData.address!,
+          phone: formData.phone!,
+          email: formData.email!,
+          industry: formData.industry!,
+          establishedDate: formData.establishedDate!
+        });
+      } else {
+        // 추가
+        response = await createBusiness({
+          companyName: formData.companyName!,
+          businessNumber: formData.businessNumber!,
+          ceoName: formData.ceoName!,
+          address: formData.address!,
+          phone: formData.phone!,
+          email: formData.email!,
+          industry: formData.industry!,
+          establishedDate: formData.establishedDate!
+        });
+      }
+
+      if (response.success) {
+        alert(response.message);
+        onSuccess();
+        onClose();
+      } else {
+        alert(response.error || '저장에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('저장 실패:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
   if (!show) return null;
 
   return (
@@ -46,7 +120,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+    
     }}>
       <div style={{
         position: 'relative',
@@ -126,12 +200,18 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
         </div>
 
         {/* 모달 바디 */}
-        <div style={{ padding: '32px' }}>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ padding: '12px' }}>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
+          >
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '24px'
+              gap: '54px'
             }}>
               <div>
                 <label style={{ 
@@ -145,7 +225,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="companyName"
                   value={formData.companyName || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -180,7 +260,8 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="businessNumber"
                   value={formData.businessNumber || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
+                  maxLength={12}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -215,7 +296,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="ceoName"
                   value={formData.ceoName || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -250,7 +331,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="industry"
                   value={formData.industry || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -285,7 +366,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="phone"
                   value={formData.phone || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -320,7 +401,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="email"
                   name="email"
                   value={formData.email || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -355,7 +436,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="text"
                   name="address"
                   value={formData.address || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -390,7 +471,7 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                   type="date"
                   name="establishedDate"
                   value={formData.establishedDate || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -448,31 +529,47 @@ const BusinessModal: React.FC<BusinessModalProps> = ({
                 취소
               </button>
               <button
-                type="button"
-                onClick={onSave}
+                type="submit"
+                disabled={loading}
                 style={{
                   padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
                   color: 'white',
                   borderRadius: '12px',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%)';
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)';
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
                 }}
               >
-                {editingId ? '수정 완료' : '추가 완료'}
+                {loading ? (
+                  <>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    처리중...
+                  </>
+                ) : (
+                  editingId ? '수정 완료' : '추가 완료'
+                )}
               </button>
             </div>
           </form>

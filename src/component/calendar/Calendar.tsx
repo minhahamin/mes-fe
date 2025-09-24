@@ -38,20 +38,20 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
 
   const getEventTypeColor = (type: CalendarEvent['type']) => {
     switch (type) {
-      case 'production': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'meeting': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'inspection': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'production': return { backgroundColor: '#dbeafe', color: '#1e40af', borderColor: '#bfdbfe' };
+      case 'maintenance': return { backgroundColor: '#fef3c7', color: '#92400e', borderColor: '#fde68a' };
+      case 'meeting': return { backgroundColor: '#e9d5ff', color: '#6b21a8', borderColor: '#d8b4fe' };
+      case 'inspection': return { backgroundColor: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' };
+      default: return { backgroundColor: '#f3f4f6', color: '#374151', borderColor: '#d1d5db' };
     }
   };
 
   const getPriorityColor = (priority: CalendarEvent['priority']) => {
     switch (priority) {
-      case 'high': return 'border-l-4 border-red-500';
-      case 'medium': return 'border-l-4 border-yellow-500';
-      case 'low': return 'border-l-4 border-green-500';
-      default: return 'border-l-4 border-gray-300';
+      case 'high': return { borderLeft: '4px solid #ef4444' };
+      case 'medium': return { borderLeft: '4px solid #eab308' };
+      case 'low': return { borderLeft: '4px solid #22c55e' };
+      default: return { borderLeft: '4px solid #d1d5db' };
     }
   };
 
@@ -91,28 +91,67 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
   };
 
   return (
-    <div className="bg-white">
+    <div style={{ backgroundColor: 'white' }}>
       {/* 이전/다음 달 버튼 */}
-      <div className="flex justify-center items-center mb-4">
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: '16px'
+      }}>
         <button
           onClick={handlePrevMonth}
-          className="p-3 hover:bg-gray-100 rounded-lg transition-colors mr-6 border border-gray-200 hover:border-gray-300"
+          style={{
+            padding: '12px',
+            backgroundColor: 'transparent',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            marginRight: '24px'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#f3f4f6';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
           title="이전 달"
         >
-           <span className="text-gray-700">◀</span>
+           <span style={{ color: '#374151', fontSize: '16px' }}>◀</span>
         </button>
-        <h2 className="text-3xl font-bold text-blue-600 mx-6 mr-6">
+        <h2 style={{
+          fontSize: '30px',
+          fontWeight: 'bold',
+          color: '#2563eb',
+          margin: '0 24px'
+        }}>
           {value.getFullYear()}년 {value.getMonth() + 1}월
         </h2>
         <button
           onClick={handleNextMonth}
-          className="p-3 hover:bg-gray-100 rounded-lg transition-colors ml-6 border border-gray-200 hover:border-gray-300"
+          style={{
+            padding: '12px',
+            backgroundColor: 'transparent',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            marginLeft: '24px'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#f3f4f6';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
           title="다음 달"
         >
-          {/* <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg> */}
-          <span className="text-gray-700">▶</span>
+          <span style={{ color: '#374151', fontSize: '16px' }}>▶</span>
         </button>
       </div>
 
@@ -137,15 +176,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
           if (view === 'month') {
             const dayEvents = getEventsForDate(date);
             return (
-              <div className="flex flex-col h-full">
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* 이벤트 목록만 표시 (날짜는 react-calendar가 자동 표시) */}
                 {dayEvents.length > 0 && (
-                  <div className="space-y-1 w-full mt-1">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', marginTop: '4px' }}>
                     {dayEvents.slice(0, 2).map((event) => {
                       const isRangeStart = event.isRange && event.date.getTime() === date.getTime();
                       const isRangeEnd = event.isRange && event.endDate && event.endDate.getTime() === date.getTime();
                       const isRangeMiddle = event.isRange && event.endDate && 
                         date > event.date && date < event.endDate;
+                      
+                      const typeColors = getEventTypeColor(event.type);
+                      const priorityColors = getPriorityColor(event.priority);
                       
                       return (
                         <div
@@ -154,15 +196,26 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
                             e.stopPropagation();
                             handleEventClick(event);
                           }}
-                          className={`
-                            text-xs p-1 rounded cursor-pointer truncate border-l-2
-                            ${getEventTypeColor(event.type)}
-                            ${getPriorityColor(event.priority)}
-                            hover:shadow-sm
-                            ${isRangeStart ? 'rounded-l-none' : ''}
-                            ${isRangeEnd ? 'rounded-r-none' : ''}
-                            ${isRangeMiddle ? 'rounded-none' : ''}
-                          `}
+                          style={{
+                            fontSize: '12px',
+                            padding: '4px',
+                            borderRadius: isRangeStart ? '4px 0 0 4px' : 
+                                         isRangeEnd ? '0 4px 4px 0' : 
+                                         isRangeMiddle ? '0' : '4px',
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            ...typeColors,
+                            ...priorityColors,
+                            transition: 'box-shadow 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                           title={event.title}
                         >
                           {isRangeStart && event.isRange ? event.title : 
@@ -172,7 +225,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
                       );
                     })}
                     {dayEvents.length > 2 && (
-                      <div className="text-xs text-gray-500 text-center">
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        textAlign: 'center'
+                      }}>
                         +{dayEvents.length - 2}개 더
                       </div>
                     )}
@@ -189,9 +246,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({ events, onEventClick, onDateC
             const isToday = date.toDateString() === new Date().toDateString();
             const dayNumber = date.getDate();
             
+            // 인라인 스타일을 위한 클래스명 반환 (react-calendar의 기본 스타일링 유지)
             return `
-              ${isWeekend || dayNumber === 6 ? 'text-red-600' : 'text-blue-600'}
-              ${isToday ? 'bg-blue-50' : ''}
+              ${isWeekend || dayNumber === 6 ? 'weekend-day' : 'weekday-day'}
+              ${isToday ? 'today-day' : ''}
             `;
           }
           return '';

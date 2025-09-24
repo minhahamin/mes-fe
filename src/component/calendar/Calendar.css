@@ -103,3 +103,16 @@
 .react-calendar__tile[data-day="6"] abbr {
   color: #dc2626;
 }
+
+/* 인라인 스타일을 위한 클래스들 */
+.weekend-day {
+  color: #dc2626 !important;
+}
+
+.weekday-day {
+  color: #2563eb !important;
+}
+
+.today-day {
+  background-color: #dbeafe !important;
+}

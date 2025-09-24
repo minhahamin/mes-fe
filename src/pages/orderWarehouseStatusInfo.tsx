@@ -1,4 +1,7 @@
 import React, { useState, useCallback } from 'react';
+import OrderWarehouseStatusStatCard from '../component/orderWarehouseStatus/OrderWarehouseStatusStatCard';
+import OrderingTableRow from '../component/orderWarehouseStatus/OrderingTableRow';
+import WarehouseTableRow from '../component/orderWarehouseStatus/WarehouseTableRow';
 import { OrderingData } from '../types/ordering';
 import { WarehouseData } from '../types/warehouse';
 
@@ -46,28 +49,6 @@ const STYLES = {
     color: '#1f2937',
     marginBottom: '16px'
   },
-  statGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px'
-  },
-  statCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    padding: '20px',
-    textAlign: 'center' as const
-  },
-  statValue: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: '4px'
-  },
-  statLabel: {
-    fontSize: '14px',
-    color: '#6b7280'
-  },
   table: {
     width: '100%',
     borderCollapse: 'collapse' as const
@@ -81,32 +62,6 @@ const STYLES = {
     backgroundColor: '#f9fafb',
     borderBottom: '1px solid #e5e7eb'
   },
-  td: {
-    padding: '16px',
-    fontSize: '14px',
-    color: '#1f2937',
-    borderBottom: '1px solid #e5e7eb'
-  },
-  statusBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '4px 12px',
-    borderRadius: '9999px',
-    fontSize: '12px',
-    fontWeight: '500'
-  },
-  progressBar: {
-    width: '100%',
-    height: '8px',
-    backgroundColor: '#e5e7eb',
-    borderRadius: '4px',
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: '4px',
-    transition: 'width 0.3s ease'
-  }
 } as const;
 
 // 더미 데이터
@@ -220,63 +175,61 @@ const OrderWarehouseStatusInfo: React.FC = () => {
   const fullWarehouses = WAREHOUSE_DATA.filter(wh => wh.status === 'full').length;
   const avgUtilization = WAREHOUSE_DATA.reduce((sum, wh) => sum + wh.utilizationRate, 0) / WAREHOUSE_DATA.length;
 
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      '입고완료': { color: '#d1fae5', textColor: '#065f46' },
-      '부분입고': { color: '#fef3c7', textColor: '#d97706' },
-      '발주됨': { color: '#dbeafe', textColor: '#1e40af' },
-      '대기': { color: '#f3f4f6', textColor: '#6b7280' },
-      '취소': { color: '#fee2e2', textColor: '#991b1b' },
-      'active': { color: '#d1fae5', textColor: '#065f46' },
-      'full': { color: '#fee2e2', textColor: '#991b1b' },
-      'inactive': { color: '#f3f4f6', textColor: '#6b7280' },
-      'maintenance': { color: '#fef3c7', textColor: '#d97706' },
-      'high': { color: '#fee2e2', textColor: '#991b1b' },
-      'medium': { color: '#dbeafe', textColor: '#1e40af' },
-      'low': { color: '#f3f4f6', textColor: '#6b7280' },
-      'urgent': { color: '#fee2e2', textColor: '#991b1b' },
-      '높음': { color: '#fee2e2', textColor: '#991b1b' },
-      '보통': { color: '#dbeafe', textColor: '#1e40af' },
-      '낮음': { color: '#f3f4f6', textColor: '#6b7280' },
-      '긴급': { color: '#fee2e2', textColor: '#991b1b' }
-    };
-    const statusInfo = statusMap[status as keyof typeof statusMap] || { color: '#f3f4f6', textColor: '#6b7280' };
-    return (
-      <span style={{
-        ...STYLES.statusBadge,
-        backgroundColor: statusInfo.color,
-        color: statusInfo.textColor
-      }}>
-        {status}
-      </span>
-    );
-  };
-
-  const getProgressColor = (rate: number) => {
-    if (rate >= 90) return '#ef4444';
-    if (rate >= 70) return '#f59e0b';
-    return '#22c55e';
-  };
 
   return (
     <div style={STYLES.container}>
       <div style={STYLES.content}>
         {/* 헤더 */}
-        <div style={STYLES.header}>
-          <div style={STYLES.headerContent}>
-            <div>
-              <h1 style={STYLES.title}>발주·입고 현황 조회</h1>
-              <p style={STYLES.subtitle}>발주관리와 입고관리의 연계 현황을 종합적으로 조회합니다</p>
+        <div style={{
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          borderRadius: '16px',
+          padding: '32px',
+          marginBottom: '32px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                padding: '12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '12px'
+              }}>
+                <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  margin: 0
+                }}>발주·입고 현황 조회</h1>
+                <p style={{
+                  fontSize: '18px',
+                  color: '#bfdbfe',
+                  margin: 0
+                }}>발주관리와 입고관리의 연계 현황을 종합적으로 조회합니다</p>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #d1d5db',
-                  fontSize: '14px'
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '14px',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  cursor: 'pointer'
                 }}
               >
                 <option value="week">최근 1주</option>
@@ -288,21 +241,50 @@ const OrderWarehouseStatusInfo: React.FC = () => {
 
           {/* 통계 카드 */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-            <div style={{
-              ...STYLES.statCard,
-              backgroundColor: '#f0f9ff',
-              border: '2px solid #0ea5e9',
-              minWidth: '200px'
-            }}>
-              <div style={{ ...STYLES.statValue, color: '#0ea5e9' }}>{avgUtilization.toFixed(1)}%</div>
-              <div style={{ ...STYLES.statLabel, color: '#0369a1' }}>평균 창고 사용률</div>
-            </div>
+            <OrderWarehouseStatusStatCard
+              title="평균 창고 사용률"
+              value={`${avgUtilization.toFixed(1)}%`}
+              icon={
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#0ea5e9' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              }
+              color="#0ea5e9"
+              bgColor="#f0f9ff"
+            />
           </div>
         </div>
 
         {/* 발주 현황 테이블 */}
-        <div style={STYLES.card}>
-          <h2 style={STYLES.cardTitle}>발주 현황</h2>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          overflow: 'hidden',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            padding: '32px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px'
+              }}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: 'white',
+                margin: 0
+              }}>발주 현황</h2>
+            </div>
+          </div>
           <table style={STYLES.table}>
             <thead>
               <tr>
@@ -319,27 +301,47 @@ const OrderWarehouseStatusInfo: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {ORDERING_DATA.map((order) => (
-                <tr key={order.id}>
-                  <td style={STYLES.td}>{order.orderId}</td>
-                  <td style={STYLES.td}>{order.supplierName}</td>
-                  <td style={STYLES.td}>{order.productName}</td>
-                  <td style={STYLES.td}>{order.quantity.toLocaleString()}개</td>
-                  <td style={STYLES.td}>{order.totalAmount.toLocaleString()}원</td>
-                  <td style={STYLES.td}>{order.orderDate}</td>
-                  <td style={STYLES.td}>{order.expectedDeliveryDate}</td>
-                  <td style={STYLES.td}>{getStatusBadge(order.status)}</td>
-                  <td style={STYLES.td}>{getStatusBadge(order.priority)}</td>
-                  <td style={STYLES.td}>{order.purchasePerson}</td>
-                </tr>
+              {ORDERING_DATA.map((order, index) => (
+                <OrderingTableRow 
+                  key={order.id} 
+                  item={order} 
+                  index={index}
+                />
               ))}
             </tbody>
           </table>
         </div>
 
         {/* 입고 현황 테이블 */}
-        <div style={STYLES.card}>
-          <h2 style={STYLES.cardTitle}>입고 현황</h2>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          overflow: 'hidden',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            padding: '32px',
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px'
+              }}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: 'white',
+                margin: 0
+              }}>입고 현황</h2>
+            </div>
+          </div>
           <table style={STYLES.table}>
             <thead>
               <tr>
@@ -356,40 +358,48 @@ const OrderWarehouseStatusInfo: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {WAREHOUSE_DATA.map((warehouse) => (
-                <tr key={warehouse.id}>
-                  <td style={STYLES.td}>{warehouse.warehouseId}</td>
-                  <td style={STYLES.td}>{warehouse.warehouseName}</td>
-                  <td style={STYLES.td}>{warehouse.location}</td>
-                  <td style={STYLES.td}>{warehouse.capacity.toLocaleString()}</td>
-                  <td style={STYLES.td}>{warehouse.currentStock.toLocaleString()}</td>
-                  <td style={STYLES.td}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={STYLES.progressBar}>
-                        <div 
-                          style={{
-                            ...STYLES.progressFill,
-                            width: `${warehouse.utilizationRate}%`,
-                            backgroundColor: getProgressColor(warehouse.utilizationRate)
-                          }}
-                        />
-                      </div>
-                      <span>{warehouse.utilizationRate}%</span>
-                    </div>
-                  </td>
-                  <td style={STYLES.td}>{getStatusBadge(warehouse.status)}</td>
-                  <td style={STYLES.td}>{warehouse.manager}</td>
-                  <td style={STYLES.td}>{warehouse.temperature} / {warehouse.humidity}</td>
-                  <td style={STYLES.td}>{getStatusBadge(warehouse.securityLevel)}</td>
-                </tr>
+              {WAREHOUSE_DATA.map((warehouse, index) => (
+                <WarehouseTableRow 
+                  key={warehouse.id} 
+                  item={warehouse} 
+                  index={index}
+                />
               ))}
             </tbody>
           </table>
         </div>
 
         {/* 연계 현황 요약 */}
-        <div style={STYLES.card}>
-          <h2 style={STYLES.cardTitle}>발주-입고 연계 현황</h2>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          overflow: 'hidden',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            padding: '32px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px'
+              }}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: 'white',
+                margin: 0
+              }}>발주-입고 연계 현황</h2>
+            </div>
+          </div>
+          <div style={{ padding: '32px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
@@ -415,6 +425,7 @@ const OrderWarehouseStatusInfo: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
