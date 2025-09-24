@@ -25,7 +25,7 @@ export interface BusinessUpdateRequest extends BusinessCreateRequest {
 // 사업장 정보 생성 (POST /companies)
 export const createBusiness = async (businessData: BusinessCreateRequest): Promise<BusinessApiResponse> => {
   try {
-    const response = await fetch('/companies', {
+    const response = await fetch('/api/companies', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -55,12 +55,13 @@ export const createBusiness = async (businessData: BusinessCreateRequest): Promi
 // 사업장 정보 수정 (PATCH /companies/:id)
 export const updateBusiness = async (businessData: BusinessUpdateRequest): Promise<BusinessApiResponse> => {
   try {
-    const response = await fetch(`/companies/${businessData.id}`, {
+    const { id, ...updateData } = businessData;
+    const response = await fetch(`/api/companies/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(businessData),
+      body: JSON.stringify(updateData),
     });
 
     if (!response.ok) {
@@ -85,7 +86,7 @@ export const updateBusiness = async (businessData: BusinessUpdateRequest): Promi
 // 사업장 정보 삭제 (DELETE /companies/:id)
 export const deleteBusiness = async (id: number): Promise<BusinessApiResponse> => {
   try {
-    const response = await fetch(`/companies/${id}`, {
+    const response = await fetch(`/api/companies/${id}`, {
       method: 'DELETE',
     });
 
@@ -109,7 +110,7 @@ export const deleteBusiness = async (id: number): Promise<BusinessApiResponse> =
 // 사업장 정보 조회 (GET /companies)
 export const getBusinesses = async (): Promise<BusinessApiResponse> => {
   try {
-    const response = await fetch('/companies');
+    const response = await fetch('/api/companies');
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -132,7 +133,7 @@ export const getBusinesses = async (): Promise<BusinessApiResponse> => {
 // 사업장 정보 단건 조회 (GET /companies/:id)
 export const getBusiness = async (id: number): Promise<BusinessApiResponse> => {
   try {
-    const response = await fetch(`/companies/${id}`);
+    const response = await fetch(`/api/companies/${id}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
