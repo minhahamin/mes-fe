@@ -1,6 +1,6 @@
 export interface EmployeeData {
   id: number;
-  employeeId: string;
+  employeeId?: string;
   name: string;
   department: string;
   position: string;
@@ -12,4 +12,6 @@ export interface EmployeeData {
   address: string;
   emergencyContact: string;
   emergencyPhone: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

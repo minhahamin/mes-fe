@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import EmployeeStatCard from '../component/employee/EmployeeStatCard';
 import EmployeeTableRow from '../component/employee/EmployeeTableRow';
 import EmployeeModal from '../component/employee/EmployeeModal';
 import { EmployeeData } from '../types/employee';
+import { getBusinesses, deleteBusiness } from '../api/employeeApi';
 
 // 스타일 상수
 const STYLES = {
@@ -96,73 +97,96 @@ const EmployeeInfo: React.FC = () => {
   // 상태 관리
   const [employeeData, setEmployeeData] = useState<EmployeeData[]>(INITIAL_DATA);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<EmployeeData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 데이터 로드
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setEmployeeData(response.data);
+      }
+    } catch (error) {
+      console.error('직원 정보 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
-    setFormData({});
     setEditingId(null);
     setShowForm(true);
   }, []);
 
   const handleEdit = useCallback((id: number) => {
-    const item = employeeData.find(d => d.id === id);
-    if (item) {
-      setFormData(item);
-      setEditingId(id);
-      setShowForm(true);
-    }
-  }, [employeeData]);
+    setEditingId(id);
+    setShowForm(true);
+  }, []);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setEmployeeData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          alert(response.message);
+          await loadEmployees(); // 데이터 다시 로드
+        } else {
+          alert(response.error || '삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('삭제 실패:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!formData.employeeId || !formData.name || !formData.department) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
+  const handleModalSuccess = useCallback(async () => {
+    await loadEmployees(); // 데이터 다시 로드
+  }, []);
 
-    if (editingId) {
-      // 수정
-      setEmployeeData(prev => prev.map(d => 
-        d.id === editingId ? { ...d, ...formData } as EmployeeData : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...employeeData.map(d => d.id), 0) + 1;
-      setEmployeeData(prev => [...prev, { ...formData, id: newId } as EmployeeData]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, employeeData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
-    setFormData({});
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'salary' ? Number(value) : value 
-    }));
-  }, []);
 
   // 통계 계산
   const activeEmployees = employeeData.filter(emp => emp.status === 'active').length;
-  const totalSalary = employeeData.reduce((sum, emp) => sum + emp.salary, 0);
+  const totalSalary = employeeData.reduce((sum, emp) => {
+    // 문자열과 숫자 모두 처리
+    let salary = 0;
+    if (typeof emp.salary === 'number') {
+      salary = emp.salary;
+    } else if (typeof emp.salary === 'string') {
+      salary = parseFloat(emp.salary) || 0;
+    }
+    return sum + salary;
+  }, 0);
   const averageSalary = employeeData.length > 0 ? totalSalary / employeeData.length : 0;
   const departments = new Set(employeeData.map(emp => emp.department)).size;
 
   return (
-    <div style={STYLES.container}>
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={STYLES.container}>
       <div style={STYLES.content}>
         {/* 헤더 섹션 */}
         <div style={STYLES.header}>
@@ -299,7 +323,31 @@ const EmployeeInfo: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', position: 'relative' }}>
+            {loading && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000,
+                borderRadius: '16px'
+              }}>
+                <div style={{
+                  border: '4px solid rgba(0, 0, 0, 0.1)',
+                  borderTop: '4px solid #8b5cf6',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              </div>
+            )}
             <table style={{ minWidth: '100%' }}>
               <thead>
                 <tr style={{
@@ -408,12 +456,12 @@ const EmployeeInfo: React.FC = () => {
       <EmployeeModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
+        initialData={editingId ? employeeData.find(d => d.id === editingId) : undefined}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
-    </div>
+      </div>
+    </>
   );
 };
 
