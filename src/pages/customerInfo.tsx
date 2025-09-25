@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import CustomerStatCard from '../component/customer/CustomerStatCard';
 import CustomerTableRow from '../component/customer/CustomerTableRow';
 import CustomerModal from '../component/customer/CustomerModal';
 import { CustomerData } from '../types/customer';
+import { getBusinesses, deleteBusiness } from '../api/customerApi';
 
 // 스타일 상수
 const STYLES = {
@@ -77,72 +78,93 @@ const CustomerInfo: React.FC = () => {
   // 상태 관리
   const [customerData, setCustomerData] = useState<CustomerData[]>(INITIAL_DATA);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<CustomerData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 데이터 로드
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setCustomerData(response.data);
+      }
+    } catch (error) {
+      console.error('고객 정보 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
-    setFormData({});
     setEditingId(null);
     setShowForm(true);
   }, []);
 
   const handleEdit = useCallback((id: number) => {
-    const item = customerData.find(d => d.id === id);
-    if (item) {
-      setFormData(item);
-      setEditingId(id);
-      setShowForm(true);
-    }
-  }, [customerData]);
+    setEditingId(id);
+    setShowForm(true);
+  }, []);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setCustomerData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          alert(response.message);
+          await loadCustomers(); // 데이터 다시 로드
+        } else {
+          alert(response.error || '삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('삭제 실패:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!formData.customerName || !formData.contactPerson || !formData.phone) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      setCustomerData(prev => prev.map(d => 
-        d.id === editingId ? { ...d, ...formData } as CustomerData : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...customerData.map(d => d.id), 0) + 1;
-      setCustomerData(prev => [...prev, { ...formData, id: newId } as CustomerData]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, customerData]);
+  const handleModalSuccess = useCallback(async () => {
+    await loadCustomers(); // 데이터 다시 로드
+  }, []);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
-    setFormData({});
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'creditLimit' ? Number(value) : value 
-    }));
-  }, []);
-
   // 통계 계산
-  const totalCreditLimit = customerData.reduce((sum, customer) => sum + customer.creditLimit, 0);
+  const totalCreditLimit = customerData.reduce((sum, customer) => {
+    // 문자열과 숫자 모두 처리
+    let creditLimit = 0;
+    if (typeof customer.creditLimit === 'number') {
+      creditLimit = customer.creditLimit;
+    } else if (typeof customer.creditLimit === 'string') {
+      creditLimit = parseFloat(customer.creditLimit) || 0;
+    }
+    return sum + creditLimit;
+  }, 0);
   const averageCreditLimit = customerData.length > 0 ? totalCreditLimit / customerData.length : 0;
   const industries = new Set(customerData.map(d => d.industry)).size;
 
   return (
-    <div style={STYLES.container}>
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={STYLES.container}>
       <div style={STYLES.content}>
         {/* 헤더 섹션 */}
         <div style={STYLES.header}>
@@ -279,7 +301,31 @@ const CustomerInfo: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', position: 'relative' }}>
+            {loading && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000,
+                borderRadius: '16px'
+              }}>
+                <div style={{
+                  border: '4px solid rgba(0, 0, 0, 0.1)',
+                  borderTop: '4px solid #10b981',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              </div>
+            )}
             <table style={{ minWidth: '100%' }}>
               <thead>
                 <tr style={{
@@ -397,12 +443,12 @@ const CustomerInfo: React.FC = () => {
       <CustomerModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
+        initialData={editingId ? customerData.find(d => d.id === editingId) : undefined}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

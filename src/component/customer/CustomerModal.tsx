@@ -1,27 +1,155 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CustomerData } from '../../types/customer';
+import { createBusiness, updateBusiness, getBusiness } from '../../api/customerApi';
 
 interface CustomerModalProps {
   show: boolean;
   editingId: number | null;
-  formData: Partial<CustomerData>;
+  initialData?: CustomerData;
   onClose: () => void;
-  onSave: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSuccess: () => void;
 }
 
 const CustomerModal: React.FC<CustomerModalProps> = ({ 
   show, 
   editingId, 
-  formData, 
+  initialData,
   onClose, 
-  onSave, 
-  onInputChange 
+  onSuccess 
 }) => {
+  const [formData, setFormData] = useState<Partial<CustomerData>>({});
+  const [loading, setLoading] = useState(false);
+
+  // 초기 데이터 설정
+  useEffect(() => {
+    if (show) {
+      if (editingId && initialData) {
+        // 수정 시: 신용한도 포맷팅 적용
+        const formattedData = {
+          ...initialData,
+          creditLimit: initialData.creditLimit ? new Intl.NumberFormat('ko-KR').format(initialData.creditLimit) : ''
+        } as any;
+        setFormData(formattedData);
+      } else {
+        setFormData({
+          registrationDate: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
+  }, [show, editingId, initialData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    let formattedValue = value;
+    
+    // 전화번호 포맷팅 (02-0000-0000 또는 010-0000-0000)
+    if (name === 'phone') {
+      const phoneNumber = value.replace(/[^\d]/g, '');
+      if (phoneNumber.length <= 3) {
+        formattedValue = phoneNumber;
+      } else if (phoneNumber.length <= 7) {
+        formattedValue = `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
+      } else if (phoneNumber.length <= 11) {
+        formattedValue = `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7)}`;
+      } else {
+        formattedValue = `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
+      }
+    }
+    
+    // 사업자번호 포맷팅 (000-00-00000)
+    if (name === 'businessNumber') {
+      const businessNumber = value.replace(/[^\d]/g, '');
+      if (businessNumber.length <= 3) {
+        formattedValue = businessNumber;
+      } else if (businessNumber.length <= 5) {
+        formattedValue = `${businessNumber.slice(0, 3)}-${businessNumber.slice(3)}`;
+      } else if (businessNumber.length <= 10) {
+        formattedValue = `${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5)}`;
+      } else {
+        formattedValue = `${businessNumber.slice(0, 3)}-${businessNumber.slice(3, 5)}-${businessNumber.slice(5, 10)}`;
+      }
+    }
+    
+    // 신용한도 포맷팅 (천단위 구분)
+    if (name === 'creditLimit') {
+      const numericValue = value.replace(/[^\d]/g, '');
+      if (numericValue) {
+        formattedValue = new Intl.NumberFormat('ko-KR').format(Number(numericValue));
+      } else {
+        formattedValue = '';
+      }
+    }
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: name === 'creditLimit' ? (value.replace(/[^\d]/g, '') ? Number(value.replace(/[^\d]/g, '')) : '') : formattedValue
+    } as any));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.customerName || !formData.contactPerson || !formData.phone || !formData.email || 
+        !formData.address || !formData.businessNumber || !formData.industry || 
+        !formData.creditLimit || !formData.paymentTerms || !formData.registrationDate) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // API 전송용 데이터 준비 (신용한도를 숫자로 변환하고 불필요한 필드 제거)
+      const { createdAt, updatedAt, ...cleanFormData } = formData as any;
+      const submitData = {
+        ...cleanFormData,
+        creditLimit: typeof formData.creditLimit === 'string' 
+          ? Number((formData.creditLimit as string).replace(/[^\d]/g, '')) 
+          : formData.creditLimit
+      };
+      
+      
+      let response;
+
+      if (editingId) {
+        // 수정
+        response = await updateBusiness({
+          id: editingId,
+          ...submitData
+        } as any);
+      } else {
+        // 추가
+        response = await createBusiness(submitData as any);
+      }
+
+      if (response.success) {
+        alert(response.message);
+        onSuccess();
+        onClose();
+      } else {
+        alert(response.error || '작업에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('작업 실패:', error);
+      alert('작업 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!show) return null;
 
   return (
-    <div style={{
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -115,8 +243,32 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
         </div>
 
         {/* 모달 바디 */}
-        <div style={{ padding: '32px' }}>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ padding: '32px', position: 'relative' }}>
+          {loading && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              borderRadius: '16px'
+            }}>
+              <div style={{
+                border: '4px solid rgba(0, 0, 0, 0.1)',
+                borderTop: '4px solid #10b981',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -134,7 +286,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="customerName"
                   value={formData.customerName || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -169,7 +321,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="contactPerson"
                   value={formData.contactPerson || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -204,7 +356,8 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="phone"
                   value={formData.phone || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
+                  maxLength={13}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -239,7 +392,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="email"
                   name="email"
                   value={formData.email || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -274,7 +427,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="address"
                   value={formData.address || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -309,7 +462,8 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="businessNumber"
                   value={formData.businessNumber || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
+                  maxLength={12}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -344,7 +498,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="text"
                   name="industry"
                   value={formData.industry || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -376,10 +530,10 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   marginBottom: '8px' 
                 }}>신용한도 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="creditLimit"
                   value={formData.creditLimit || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -398,7 +552,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="신용한도를 입력하세요"
+                  placeholder="50,000,000"
                   required
                 />
               </div>
@@ -413,7 +567,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                 <select
                   name="paymentTerms"
                   value={formData.paymentTerms || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -455,7 +609,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                   type="date"
                   name="registrationDate"
                   value={formData.registrationDate || ''}
-                  onChange={onInputChange}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -513,37 +667,43 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
                 취소
               </button>
               <button
-                type="button"
-                onClick={onSave}
+                type="submit"
+                disabled={loading}
                 style={{
                   padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: 'white',
                   borderRadius: '12px',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  opacity: loading ? 0.6 : 1
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
                 }}
               >
-                {editingId ? '수정 완료' : '추가 완료'}
+                {loading ? '처리 중...' : (editingId ? '수정 완료' : '추가 완료')}
               </button>
             </div>
           </form>
         </div>
       </div>
     </div>
+    </>
   );
 };
 

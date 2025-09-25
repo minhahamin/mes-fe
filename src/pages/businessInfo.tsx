@@ -44,24 +44,11 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터
-const INITIAL_DATA: BusinessData[] = [
-  {
-    id: 1,
-    companyName: '한국제조공업',
-    businessNumber: '123-45-67890',
-    ceoName: '김철수',
-    address: '서울시 강남구 테헤란로 123',
-    phone: '02-1234-5678',
-    email: 'info@koreanmanufacturing.co.kr',
-    industry: '제조업',
-    establishedDate: '2020-01-15'
-  }
-];
+
 
 const BusinessInfo: React.FC = () => {
   // 상태 관리
-  const [businessData, setBusinessData] = useState<BusinessData[]>(INITIAL_DATA);
+  const [businessData, setBusinessData] = useState<BusinessData[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
