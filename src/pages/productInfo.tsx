@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ProductStatCard from '../component/product/ProductStatCard';
 import ProductTableRow from '../component/product/ProductTableRow';
 import ProductModal from '../component/product/ProductModal';
 import { ProductData } from '../types/product';
+import { getBusinesses, deleteBusiness } from '../api/productApi';
 
 // 스타일 상수
 const STYLES = {
@@ -115,79 +116,93 @@ const ProductInfo: React.FC = () => {
   // 상태 관리
   const [productData, setProductData] = useState<ProductData[]>(INITIAL_DATA);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<ProductData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 데이터 로드
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setProductData(response.data);
+      }
+    } catch (error) {
+      console.error('제품 정보 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
-    setFormData({});
     setEditingId(null);
     setShowForm(true);
   }, []);
 
   const handleEdit = useCallback((id: number) => {
-    const item = productData.find(d => d.id === id);
-    if (item) {
-      setFormData(item);
-      setEditingId(id);
-      setShowForm(true);
-    }
-  }, [productData]);
+    setEditingId(id);
+    setShowForm(true);
+  }, []);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setProductData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          alert(response.message);
+          await loadProducts(); // 데이터 다시 로드
+        } else {
+          alert(response.error || '삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('삭제 실패:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!formData.productCode || !formData.productName || !formData.category) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      setProductData(prev => prev.map(d => 
-        d.id === editingId ? { ...d, ...formData, updatedAt: new Date().toISOString().split('T')[0] } as ProductData : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...productData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      setProductData(prev => [...prev, { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now 
-      } as ProductData]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, productData]);
+  const handleModalSuccess = useCallback(async () => {
+    await loadProducts(); // 데이터 다시 로드
+  }, []);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
-    setFormData({});
     setEditingId(null);
-  }, []);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['unitPrice', 'cost', 'stock', 'minStock', 'maxStock'].includes(name) ? Number(value) : value 
-    }));
   }, []);
 
   // 통계 계산
   const activeProducts = productData.filter(prod => prod.status === 'active').length;
-  const lowStockProducts = productData.filter(prod => prod.stock <= prod.minStock).length;
-  const totalValue = productData.reduce((sum, prod) => sum + (prod.stock * prod.unitPrice), 0);
+  const lowStockProducts = productData.filter(prod => {
+    const stock = typeof prod.stock === 'number' ? prod.stock : parseFloat(prod.stock as any) || 0;
+    const minStock = typeof prod.minStock === 'number' ? prod.minStock : parseFloat(prod.minStock as any) || 0;
+    return stock <= minStock;
+  }).length;
+  const totalValue = productData.reduce((sum, prod) => {
+    const stock = typeof prod.stock === 'number' ? prod.stock : parseFloat(prod.stock as any) || 0;
+    const unitPrice = typeof prod.unitPrice === 'number' ? prod.unitPrice : parseFloat(prod.unitPrice as any) || 0;
+    return sum + (stock * unitPrice);
+  }, 0);
   const categories = new Set(productData.map(prod => prod.category)).size;
 
   return (
-    <div style={STYLES.container}>
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={STYLES.container}>
       <div style={STYLES.content}>
         {/* 헤더 섹션 */}
         <div style={STYLES.header}>
@@ -324,7 +339,31 @@ const ProductInfo: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', position: 'relative' }}>
+            {loading && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000,
+                borderRadius: '16px'
+              }}>
+                <div style={{
+                  border: '4px solid rgba(0, 0, 0, 0.1)',
+                  borderTop: '4px solid #f59e0b',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              </div>
+            )}
             <table style={{ minWidth: '100%' }}>
               <thead>
                 <tr style={{
@@ -442,12 +481,12 @@ const ProductInfo: React.FC = () => {
       <ProductModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
+        initialData={editingId ? productData.find(d => d.id === editingId) : undefined}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
-    </div>
+      </div>
+    </>
   );
 };
 
