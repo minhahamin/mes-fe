@@ -1,13 +1,15 @@
-import React from 'react';
-import { WarehouseData } from '../../types/warehouse';
+import React, { useState, useEffect } from 'react';
+import { WarehouseReceiptData } from '../../types/warehouse';
+import OrderingSearchModal from './OrderingSearchModal';
+import { OrderingData } from '../../types/ordering';
+import { createBusiness, updateBusiness, getBusiness } from '../../api/warehouseApi';
 
 interface WarehouseModalProps {
   show: boolean;
   editingId: number | null;
-  formData: Partial<WarehouseData>;
+  formData: Partial<WarehouseReceiptData>;
   onClose: () => void;
-  onSave: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSuccess: () => void;
 }
 
 const WarehouseModal: React.FC<WarehouseModalProps> = ({ 
@@ -15,9 +17,91 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
   editingId, 
   formData, 
   onClose, 
-  onSave, 
-  onInputChange 
+  onSuccess 
 }) => {
+  const [showOrderingSearch, setShowOrderingSearch] = useState(false);
+  const [modalFormData, setModalFormData] = useState<Partial<WarehouseReceiptData>>({});
+  const [loading, setLoading] = useState(false);
+
+  // 모달 열릴 때 formData 초기화
+  useEffect(() => {
+    if (show) {
+      setModalFormData(editingId ? formData : {});
+      if (editingId) {
+        loadData();
+      }
+    }
+  }, [show, editingId, formData]);
+
+  const loadData = async () => {
+    if (!editingId) return;
+    try {
+      setLoading(true);
+      const response = await getBusiness(editingId);
+      if (response.success && response.data) {
+        setModalFormData(response.data);
+      }
+    } catch (error) {
+      console.error('입고 정보 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setModalFormData(prev => ({ 
+      ...prev, 
+      [name]: ['orderedQuantity', 'receivedQuantity'].includes(name) ? Number(value) : value 
+    }));
+  };
+
+  const handleOrderingSelect = (ordering: OrderingData) => {
+    setModalFormData(prev => ({
+      ...prev,
+      orderingId: ordering.orderId,
+      supplierId: ordering.supplierId,
+      supplierName: ordering.supplierName,
+      productName: ordering.productName,
+      productCode: ordering.productCode
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!modalFormData.orderingId || !modalFormData.productName) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let response;
+
+      // receiptId 제거하고 데이터 준비
+      const { receiptId, ...submitData } = modalFormData;
+
+      if (editingId) {
+        response = await updateBusiness({ ...submitData, id: editingId } as any);
+      } else {
+        response = await createBusiness(submitData as any);
+      }
+
+      if (response.success) {
+        alert(editingId ? '입고 정보가 성공적으로 수정되었습니다.' : '입고 정보가 성공적으로 등록되었습니다.');
+        onSuccess();
+      } else {
+        alert('저장 실패: ' + response.error);
+      }
+    } catch (error) {
+      console.error('입고 정보 저장 중 오류:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!show) return null;
 
   return (
@@ -66,7 +150,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                 borderRadius: '8px'
               }}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
@@ -76,7 +160,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   color: 'white',
                   margin: 0
                 }}>
-                  {editingId ? '입고 정보 수정' : '새 입고 추가'}
+                  {editingId ? '입고 정보 수정' : '새 입고 등록'}
                 </h3>
                 <p style={{ 
                   color: '#bae6fd', 
@@ -116,7 +200,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
 
         {/* 모달 바디 */}
         <div style={{ padding: '32px' }}>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -129,12 +213,12 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>창고 ID *</label>
+                }}>입고 ID</label>
                 <input
                   type="text"
-                  name="warehouseId"
-                  value={formData.warehouseId || ''}
-                  onChange={onInputChange}
+                  name="receiptId"
+                  value={modalFormData.receiptId || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -153,8 +237,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="WH001"
-                  required
+                  placeholder="REC001 (선택사항)"
                 />
               </div>
               <div>
@@ -164,33 +247,61 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>창고명 *</label>
-                <input
-                  type="text"
-                  name="warehouseName"
-                  value={formData.warehouseName || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="본사 창고 A"
-                  required
-                />
+                }}>발주 ID *</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    name="orderingId"
+                    value={modalFormData.orderingId || ''}
+                    onChange={handleInputChange}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#0ea5e9';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                    placeholder="PO2024001"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOrderingSearch(true)}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    검색
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={{ 
@@ -199,33 +310,55 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>위치 *</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="경기도 안양시 동안구"
-                  required
-                />
+                }}>공급업체 정보</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ 
+                      fontSize: '12px', 
+                      color: '#6b7280', 
+                      marginBottom: '4px' 
+                    }}>공급업체 ID</label>
+                    <input
+                      type="text"
+                      name="supplierId"
+                      value={modalFormData.supplierId || ''}
+                      readOnly
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        color: '#6b7280'
+                      }}
+                      placeholder="발주 선택 후 자동 입력"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ 
+                      fontSize: '12px', 
+                      color: '#6b7280', 
+                      marginBottom: '4px' 
+                    }}>공급업체명</label>
+                    <input
+                      type="text"
+                      name="supplierName"
+                      value={modalFormData.supplierName || ''}
+                      readOnly
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        color: '#6b7280'
+                      }}
+                      placeholder="발주 선택 후 자동 입력"
+                    />
+                  </div>
+                </div>
               </div>
               <div>
                 <label style={{ 
@@ -234,12 +367,69 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>총 용량 *</label>
+                }}>제품 정보</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ 
+                      fontSize: '12px', 
+                      color: '#6b7280', 
+                      marginBottom: '4px' 
+                    }}>제품명</label>
+                    <input
+                      type="text"
+                      name="productName"
+                      value={modalFormData.productName || ''}
+                      readOnly
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        color: '#6b7280'
+                      }}
+                      placeholder="발주 선택 후 자동 입력"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ 
+                      fontSize: '12px', 
+                      color: '#6b7280', 
+                      marginBottom: '4px' 
+                    }}>제품코드</label>
+                    <input
+                      type="text"
+                      name="productCode"
+                      value={modalFormData.productCode || ''}
+                      readOnly
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '14px',
+                        backgroundColor: '#f9fafb',
+                        color: '#6b7280'
+                      }}
+                      placeholder="발주 선택 후 자동 입력"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>주문 수량 *</label>
                 <input
                   type="number"
-                  name="capacity"
-                  value={formData.capacity || ''}
-                  onChange={onInputChange}
+                  name="orderedQuantity"
+                  value={modalFormData.orderedQuantity || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -258,7 +448,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="10000"
+                  placeholder="100"
                   required
                 />
               </div>
@@ -269,12 +459,12 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>현재 재고 *</label>
+                }}>입고 수량 *</label>
                 <input
                   type="number"
-                  name="currentStock"
-                  value={formData.currentStock || ''}
-                  onChange={onInputChange}
+                  name="receivedQuantity"
+                  value={modalFormData.receivedQuantity || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -293,9 +483,151 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="7500"
+                  placeholder="100"
                   required
                 />
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>배송일 *</label>
+                <input
+                  type="date"
+                  name="deliveryDate"
+                  value={modalFormData.deliveryDate || ''}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0ea5e9';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>입고일</label>
+                <input
+                  type="date"
+                  name="receivedDate"
+                  value={modalFormData.receivedDate || ''}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0ea5e9';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>창고 위치 *</label>
+                <input
+                  type="text"
+                  name="warehouseLocation"
+                  value={modalFormData.warehouseLocation || ''}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0ea5e9';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  }}
+                  placeholder="경기도 안양시 동안구 A구역"
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#374151', 
+                  marginBottom: '8px' 
+                }}>상태 *</label>
+                <select
+                  name="status"
+                  value={modalFormData.status || ''}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    backgroundColor: 'white'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#0ea5e9';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  }}
+                  required
+                >
+                  <option value="">선택하세요</option>
+                  <option value="pending">대기</option>
+                  <option value="partial">부분입고</option>
+                  <option value="received">입고완료</option>
+                  <option value="rejected">반품</option>
+                </select>
               </div>
               <div>
                 <label style={{ 
@@ -308,8 +640,8 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                 <input
                   type="text"
                   name="manager"
-                  value={formData.manager || ''}
-                  onChange={onInputChange}
+                  value={modalFormData.manager || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -332,221 +664,6 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                   required
                 />
               </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>상태 *</label>
-                <select
-                  name="status"
-                  value={formData.status || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                    backgroundColor: 'white'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  required
-                >
-                  <option value="">선택하세요</option>
-                  <option value="active">활성</option>
-                  <option value="maintenance">점검중</option>
-                  <option value="inactive">비활성</option>
-                  <option value="full">가득참</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>온도</label>
-                <input
-                  type="text"
-                  name="temperature"
-                  value={formData.temperature || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="20°C"
-                />
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>습도</label>
-                <input
-                  type="text"
-                  name="humidity"
-                  value={formData.humidity || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="60%"
-                />
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>보안 수준 *</label>
-                <select
-                  name="securityLevel"
-                  value={formData.securityLevel || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                    backgroundColor: 'white'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  required
-                >
-                  <option value="">선택하세요</option>
-                  <option value="low">낮음</option>
-                  <option value="medium">보통</option>
-                  <option value="high">높음</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>마지막 점검일 *</label>
-                <input
-                  type="date"
-                  name="lastInspection"
-                  value={formData.lastInspection || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#374151', 
-                  marginBottom: '8px' 
-                }}>다음 점검일 *</label>
-                <input
-                  type="date"
-                  name="nextInspection"
-                  value={formData.nextInspection || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#0ea5e9';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  required
-                />
-              </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ 
                   display: 'block', 
@@ -558,8 +675,8 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                 <input
                   type="text"
                   name="notes"
-                  value={formData.notes || ''}
-                  onChange={onInputChange}
+                  value={modalFormData.notes || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -578,7 +695,7 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="발주관리 연계 정보를 입력하세요"
+                  placeholder="입고 관련 특이사항을 입력하세요"
                 />
               </div>
             </div>
@@ -617,8 +734,8 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
                 취소
               </button>
               <button
-                type="button"
-                onClick={onSave}
+                type="submit"
+                disabled={loading}
                 style={{
                   padding: '12px 24px',
                   background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
@@ -647,6 +764,13 @@ const WarehouseModal: React.FC<WarehouseModalProps> = ({
           </form>
         </div>
       </div>
+      
+      {/* 발주 목록 검색 모달 */}
+      <OrderingSearchModal
+        show={showOrderingSearch}
+        onClose={() => setShowOrderingSearch(false)}
+        onSelect={handleOrderingSelect}
+      />
     </div>
   );
 };

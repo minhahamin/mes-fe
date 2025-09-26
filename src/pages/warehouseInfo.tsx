@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import WarehouseStatCard from '../component/warehouse/WarehouseStatCard';
 import WarehouseTableRow from '../component/warehouse/WarehouseTableRow';
 import WarehouseModal from '../component/warehouse/WarehouseModal';
-import { WarehouseData } from '../types/warehouse';
+import { WarehouseReceiptData } from '../types/warehouse';
+import { getBusinesses, deleteBusiness } from '../api/warehouseApi';
 
 // 스타일 상수
 const STYLES = {
@@ -43,81 +44,84 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터 (발주관리 기반)
-const INITIAL_DATA: WarehouseData[] = [
+// 초기 데이터 (입고관리 기반)
+const INITIAL_DATA: WarehouseReceiptData[] = [
   {
     id: 1,
+    receiptId: 'REC001',
+    orderingId: 'PO2024001',
     warehouseId: 'WH001',
     warehouseName: '본사 창고 A',
-    location: '경기도 안양시 동안구',
-    capacity: 10000,
-    currentStock: 7500,
-    utilizationRate: 75,
+    supplierName: 'SSG강판',
+    productName: '스테인리스 강판',
+    productCode: 'MAT001',
+    orderedQuantity: 100,
+    receivedQuantity: 100,
+    deliveryDate: '2024-01-20',
+    receivedDate: '2024-01-20',
+    warehouseLocation: '경기도 안양시 동안구 A구역',
+    status: 'received',
     manager: '김창고',
-    status: 'active',
-    temperature: '20°C',
-    humidity: '60%',
-    securityLevel: 'high',
-    lastInspection: '2024-01-15',
-    nextInspection: '2024-02-15',
-    notes: 'PO2024001 발주 물품 입고 완료 - 스테인리스 강판 100개',
+    notes: 'SSG강판 PO2024001 발주 물품 입고 완료',
     createdAt: '2024-01-01',
     updatedAt: '2024-01-20'
   },
   {
     id: 2,
+    receiptId: 'REC002',
+    orderingId: 'PO2024002',
     warehouseId: 'WH002',
     warehouseName: '본사 창고 B',
-    location: '경기도 안양시 동안구',
-    capacity: 8000,
-    currentStock: 8000,
-    utilizationRate: 100,
+    supplierName: '전자부품산업',
+    productName: '반도체 칩',
+    productCode: 'CHIP001',
+    orderedQuantity: 1000,
+    receivedQuantity: 800,
+    deliveryDate: '2024-01-25',
+    receivedDate: '2024-01-25',
+    warehouseLocation: '경기도 안양시 동안구 B구역',
+    status: 'partial',
     manager: '이창고',
-    status: 'full',
-    temperature: '18°C',
-    humidity: '55%',
-    securityLevel: 'high',
-    lastInspection: '2024-01-10',
-    nextInspection: '2024-02-10',
-    notes: 'PO2024002 발주 물품 입고 대기 중 - 반도체 칩 1000개',
+    notes: 'PO2024002 발주 물품 부분 입고 완료 - 반도체 칩 800개',
     createdAt: '2024-01-01',
     updatedAt: '2024-01-25'
   },
   {
     id: 3,
+    receiptId: 'REC003',
+    orderingId: 'PO2024003',
     warehouseId: 'WH003',
     warehouseName: '부품 창고',
-    location: '경기도 안양시 동안구',
-    capacity: 5000,
-    currentStock: 2500,
-    utilizationRate: 50,
+    supplierName: '포장물류',
+    productName: '포장 박스',
+    productCode: 'BOX001',
+    orderedQuantity: 5000,
+    receivedQuantity: 5000,
+    deliveryDate: '2024-01-30',
+    receivedDate: '2024-01-30',
+    warehouseLocation: '경기도 안양시 동안구 C구역',
+    status: 'received',
     manager: '박창고',
-    status: 'active',
-    temperature: '22°C',
-    humidity: '45%',
-    securityLevel: 'medium',
-    lastInspection: '2024-01-20',
-    nextInspection: '2024-02-20',
     notes: 'PO2024003 발주 물품 입고 완료 - 포장 박스 5000개',
     createdAt: '2024-01-01',
     updatedAt: '2024-01-30'
   },
   {
     id: 4,
+    receiptId: 'REC004',
+    orderingId: 'PO2024004',
     warehouseId: 'WH004',
     warehouseName: '화학 창고',
-    location: '경기도 안양시 동안구',
-    capacity: 3000,
-    currentStock: 600,
-    utilizationRate: 20,
+    supplierName: '화학원료',
+    productName: '접착제',
+    productCode: 'CHEM001',
+    orderedQuantity: 200,
+    receivedQuantity: 0,
+    deliveryDate: '2024-02-05',
+    warehouseLocation: '경기도 안양시 동안구 D구역',
+    status: 'pending',
     manager: '최창고',
-    status: 'active',
-    temperature: '15°C',
-    humidity: '30%',
-    securityLevel: 'high',
-    lastInspection: '2024-01-25',
-    nextInspection: '2024-02-25',
-    notes: 'PO2024004 발주 물품 입고 예정 - 접착제 200개',
+    notes: 'PO2024004 발주 물품 입고 대기 중 - 접착제 200개',
     createdAt: '2024-01-01',
     updatedAt: '2024-01-25'
   }
@@ -125,10 +129,36 @@ const INITIAL_DATA: WarehouseData[] = [
 
 const WarehouseInfo: React.FC = () => {
   // 상태 관리
-  const [warehouseData, setWarehouseData] = useState<WarehouseData[]>(INITIAL_DATA);
+  const [warehouseData, setWarehouseData] = useState<WarehouseReceiptData[]>(INITIAL_DATA);
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<WarehouseData>>({});
+  const [formData, setFormData] = useState<Partial<WarehouseReceiptData>>({});
   const [showForm, setShowForm] = useState(false);
+
+  // 데이터 로드
+  const loadWarehouseData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setWarehouseData(response.data);
+      } else {
+        console.error('입고 정보 조회 실패:', response.error);
+        // 로드 실패시 기본 데이터 사용
+        setWarehouseData(INITIAL_DATA);
+      }
+    } catch (error) {
+      console.error('입고 정보 조회 중 오류:', error);
+      setWarehouseData(INITIAL_DATA);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트시 데이터 로드
+  useEffect(() => {
+    loadWarehouseData();
+  }, [loadWarehouseData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -146,39 +176,26 @@ const WarehouseInfo: React.FC = () => {
     }
   }, [warehouseData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setWarehouseData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          // 로컬 상태에서도 제거
+          setWarehouseData(prev => prev.filter(d => d.id !== id));
+          alert('입고 정보가 성공적으로 삭제되었습니다.');
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('입고 정보 삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.warehouseId || !formData.warehouseName || !formData.manager) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as WarehouseData;
-      setWarehouseData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...warehouseData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as WarehouseData;
-      setWarehouseData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, warehouseData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -186,21 +203,27 @@ const WarehouseInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
+  const handleSuccess = useCallback(() => {
+    loadWarehouseData(); // 데이터 새로고침
+    handleCloseForm();
+  }, [loadWarehouseData, handleCloseForm]);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ 
       ...prev, 
-      [name]: ['capacity', 'currentStock', 'utilizationRate'].includes(name) ? Number(value) : value 
+      [name]: ['orderedQuantity', 'receivedQuantity'].includes(name) ? Number(value) : value 
     }));
   }, []);
 
   // 통계 계산
-  const totalWarehouses = warehouseData.length;
-  const activeWarehouses = warehouseData.filter(item => item.status === 'active').length;
-  const fullWarehouses = warehouseData.filter(item => item.status === 'full').length;
-  const totalCapacity = warehouseData.reduce((sum, item) => sum + item.capacity, 0);
-  const totalStock = warehouseData.reduce((sum, item) => sum + item.currentStock, 0);
-  const avgUtilization = warehouseData.length > 0 ? Math.round(warehouseData.reduce((sum, item) => sum + item.utilizationRate, 0) / warehouseData.length) : 0;
+  const totalReceipts = warehouseData.length;
+  const receivedReceipts = warehouseData.filter(item => item.status === 'received').length;
+  const pendingReceipts = warehouseData.filter(item => item.status === 'pending').length;
+  const partialReceipts = warehouseData.filter(item => item.status === 'partial').length;
+  const totalOrderedQuantity = warehouseData.reduce((sum, item) => sum + item.orderedQuantity, 0);
+  const totalReceivedQuantity = warehouseData.reduce((sum, item) => sum + item.receivedQuantity, 0);
+  const completionRate = totalOrderedQuantity > 0 ? Math.round((totalReceivedQuantity / totalOrderedQuantity) * 100) : 0;
 
   return (
     <div style={STYLES.container}>
@@ -215,7 +238,7 @@ const WarehouseInfo: React.FC = () => {
             </div>
             <div>
               <h1 style={STYLES.title}>입고 관리</h1>
-              <p style={STYLES.subtitle}>발주관리 기반으로 창고 입고를 체계적으로 관리하고 추적합니다</p>
+              <p style={STYLES.subtitle}>발주된 물품의 창고 입고를 체계적으로 관리하고 추적합니다</p>
             </div>
           </div>
           
@@ -227,11 +250,11 @@ const WarehouseInfo: React.FC = () => {
             marginBottom: '32px'
           }}>
             <WarehouseStatCard
-              title="총 창고 수"
-              value={totalWarehouses}
+              title="총 입고 건수"
+              value={totalReceipts}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#0ea5e9' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 tokens compare-arrows swap-horizontal arrows" />
                 </svg>
               }
               color="#0ea5e9"
@@ -239,8 +262,8 @@ const WarehouseInfo: React.FC = () => {
             />
             
             <WarehouseStatCard
-              title="활성 창고"
-              value={activeWarehouses}
+              title="입고 완료"
+              value={receivedReceipts}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#10b981' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -251,11 +274,11 @@ const WarehouseInfo: React.FC = () => {
             />
             
             <WarehouseStatCard
-              title="가득찬 창고"
-              value={fullWarehouses}
+              title="입고 대기"
+              value={pendingReceipts}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#f59e0b' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
               color="#f59e0b"
@@ -263,8 +286,8 @@ const WarehouseInfo: React.FC = () => {
             />
             
             <WarehouseStatCard
-              title="평균 사용률"
-              value={`${avgUtilization}%`}
+              title="입고 완료률"
+              value={`${completionRate}%`}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#8b5cf6' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -298,12 +321,12 @@ const WarehouseInfo: React.FC = () => {
                   fontWeight: 'bold', 
                   color: 'white',
                   margin: 0
-                }}>창고 목록</h2>
+                }}>입고 목록</h2>
                 <p style={{ 
                   color: '#bae6fd', 
                   marginTop: '4px',
                   margin: 0
-                }}>등록된 모든 창고를 확인하고 관리하세요</p>
+                }}>발주된 물품의 입고 현황을 확인하고 관리하세요</p>
               </div>
               <button
                 onClick={handleAdd}
@@ -335,7 +358,7 @@ const WarehouseInfo: React.FC = () => {
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>새 창고 추가</span>
+                <span>새 입고 등록</span>
               </button>
             </div>
           </div>
@@ -354,7 +377,7 @@ const WarehouseInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>창고 정보</th>
+                  }}>입고 정보</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -363,7 +386,7 @@ const WarehouseInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>위치</th>
+                  }}>발주 정보</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -372,7 +395,34 @@ const WarehouseInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>용량/재고</th>
+                  }}>공급업체</th>
+                  <th style={{
+                    padding: '16px 32px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>수량/입고량</th>
+                  <th style={{
+                    padding: '16px 32px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>배송일/입고일</th>
+                  <th style={{
+                    padding: '16px 32px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>창고 위치</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -391,33 +441,6 @@ const WarehouseInfo: React.FC = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
                   }}>담당자</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>환경</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>보안</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>점검일</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -451,8 +474,7 @@ const WarehouseInfo: React.FC = () => {
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleSuccess}
       />
     </div>
   );

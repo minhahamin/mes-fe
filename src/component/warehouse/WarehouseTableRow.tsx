@@ -1,8 +1,8 @@
 import React from 'react';
-import { WarehouseData } from '../../types/warehouse';
+import { WarehouseReceiptData } from '../../types/warehouse';
 
 interface WarehouseTableRowProps {
-  item: WarehouseData;
+  item: WarehouseReceiptData;
   index: number;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
@@ -11,10 +11,10 @@ interface WarehouseTableRowProps {
 const WarehouseTableRow: React.FC<WarehouseTableRowProps> = ({ item, index, onEdit, onDelete }) => {
   const getStatusBadge = (status: string) => {
     const statusMap = {
-      active: { text: '활성', color: '#d1fae5', textColor: '#065f46' },
-      maintenance: { text: '점검중', color: '#fef3c7', textColor: '#d97706' },
-      inactive: { text: '비활성', color: '#f3f4f6', textColor: '#6b7280' },
-      full: { text: '가득참', color: '#fee2e2', textColor: '#991b1b' }
+      pending: { text: '대기', color: '#fef3c7', textColor: '#d97706' },
+      partial: { text: '부분입고', color: '#dbeafe', textColor: '#1e40af' },
+      received: { text: '입고완료', color: '#d1fae5', textColor: '#065f46' },
+      rejected: { text: '반품', color: '#fee2e2', textColor: '#991b1b' }
     };
     const statusInfo = statusMap[status as keyof typeof statusMap];
     return (
@@ -33,29 +33,6 @@ const WarehouseTableRow: React.FC<WarehouseTableRowProps> = ({ item, index, onEd
     );
   };
 
-  const getSecurityBadge = (level: string) => {
-    const securityMap = {
-      low: { text: '낮음', color: '#f3f4f6', textColor: '#6b7280' },
-      medium: { text: '보통', color: '#dbeafe', textColor: '#1e40af' },
-      high: { text: '높음', color: '#d1fae5', textColor: '#065f46' }
-    };
-    const securityInfo = securityMap[level as keyof typeof securityMap];
-    return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '4px 12px',
-        borderRadius: '9999px',
-        fontSize: '12px',
-        fontWeight: '500',
-        backgroundColor: securityInfo.color,
-        color: securityInfo.textColor
-      }}>
-        {securityInfo.text}
-      </span>
-    );
-  };
-
   return (
     <tr style={{
       backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb',
@@ -67,6 +44,7 @@ const WarehouseTableRow: React.FC<WarehouseTableRowProps> = ({ item, index, onEd
     onMouseLeave={(e) => {
       e.currentTarget.style.backgroundColor = index % 2 === 0 ? 'white' : '#f9fafb';
     }}>
+      {/* 입고 정보 */}
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{
@@ -80,47 +58,78 @@ const WarehouseTableRow: React.FC<WarehouseTableRowProps> = ({ item, index, onEd
             marginRight: '16px'
           }}>
             <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>
-              {item.warehouseId.slice(-2)}
+              {item.receiptId.slice(-2)}
             </span>
           </div>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-              {item.warehouseName}
+              {item.receiptId}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
-              {item.warehouseId}
+              입고 정보
             </div>
           </div>
         </div>
       </td>
-      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
-        {item.location}
-      </td>
+      {/* 발주 정보 */}
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-            {item.currentStock.toLocaleString()} / {item.capacity.toLocaleString()}
+            {item.productName}
           </div>
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            {item.utilizationRate}% 사용률
+            발주: {item.orderingId} · {item.productCode}
           </div>
         </div>
       </td>
+      {/* 공급업체 */}
+      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+            {item.supplierName}
+          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            ID: {(item as any).supplierId || '-'}
+          </div>
+        </div>
+      </td>
+      {/* 수량/입고량 */}
+      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+            {item.receivedQuantity.toLocaleString()} / {item.orderedQuantity.toLocaleString()}
+          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            {Math.round((item.receivedQuantity / item.orderedQuantity) * 100)}% 완료
+          </div>
+        </div>
+      </td>
+      {/* 배송일/입고일 */}
+      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            배송: {item.deliveryDate}
+          </div>
+          {item.receivedDate && (
+            <div style={{ fontSize: '12px', color: '#059669', fontWeight: '500' }}>
+              입고: {item.receivedDate}
+            </div>
+          )}
+        </div>
+      </td>
+      {/* 창고 위치 */}
+      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
+        {item.warehouseLocation}
+      </td>
+      {/* 상태 */}
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         {getStatusBadge(item.status)}
       </td>
+      {/* 담당자 */}
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
         {item.manager}
       </td>
-      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
-        {item.temperature} / {item.humidity}
-      </td>
-      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
-        {getSecurityBadge(item.securityLevel)}
-      </td>
-      <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
-        {item.lastInspection}
-      </td>
+      {/* 작업 */}
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '500' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button

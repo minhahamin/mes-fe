@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import OrderingStatCard from '../component/ordering/OrderingStatCard';
 import OrderingTableRow from '../component/ordering/OrderingTableRow';
 import OrderingModal from '../component/ordering/OrderingModal';
 import { OrderingData } from '../types/ordering';
+import { getBusinesses, deleteBusiness } from '../api/purchaseApi';
 
 // 스타일 상수
 const STYLES = {
@@ -43,176 +44,103 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터
-const INITIAL_DATA: OrderingData[] = [
-  {
-    id: 1,
-    orderId: 'PO2024001',
-    supplierId: 'SUP001',
-    supplierName: 'ABC 원자재',
-    productCode: 'MAT001',
-    productName: '스테인리스 강판',
-    orderQuantity: 100,
-    unitPrice: 50000,
-    totalAmount: 5000000,
-    orderDate: '2024-01-15',
-    expectedDeliveryDate: '2024-02-15',
-    actualDeliveryDate: '2024-02-10',
-    status: 'delivered',
-    priority: 'high',
-    purchaser: '김구매',
-    paymentTerms: '계산서 발행 후 30일',
-    deliveryAddress: '경기도 안양시 동안구 시민대로 123',
-    specialRequirements: 'ISO 인증 제품만',
-    notes: '긴급 주문',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-02-10'
-  },
-  {
-    id: 2,
-    orderId: 'PO2024002',
-    supplierId: 'SUP002',
-    supplierName: 'XYZ 전자부품',
-    productCode: 'MAT002',
-    productName: '반도체 칩',
-    orderQuantity: 1000,
-    unitPrice: 2000,
-    totalAmount: 2000000,
-    orderDate: '2024-01-20',
-    expectedDeliveryDate: '2024-02-20',
-    status: 'ordered',
-    priority: 'medium',
-    purchaser: '이구매',
-    paymentTerms: '선불',
-    deliveryAddress: '경기도 안양시 동안구 시민대로 123',
-    specialRequirements: '품질 보증서 필수',
-    notes: '정기 주문',
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-25'
-  },
-  {
-    id: 3,
-    orderId: 'PO2024003',
-    supplierId: 'SUP003',
-    supplierName: 'DEF 포장재',
-    productCode: 'MAT003',
-    productName: '포장 박스',
-    orderQuantity: 5000,
-    unitPrice: 500,
-    totalAmount: 2500000,
-    orderDate: '2024-01-10',
-    expectedDeliveryDate: '2024-02-10',
-    actualDeliveryDate: '2024-02-08',
-    status: 'delivered',
-    priority: 'low',
-    purchaser: '박구매',
-    paymentTerms: '계산서 발행 후 15일',
-    deliveryAddress: '경기도 안양시 동안구 시민대로 123',
-    specialRequirements: '친환경 재질',
-    notes: '기업복 주문',
-    createdAt: '2024-01-10',
-    updatedAt: '2024-02-08'
-  },
-  {
-    id: 4,
-    orderId: 'PO2024004',
-    supplierId: 'SUP004',
-    supplierName: 'GHI 화학',
-    productCode: 'MAT004',
-    productName: '접착제',
-    orderQuantity: 200,
-    unitPrice: 15000,
-    totalAmount: 3000000,
-    orderDate: '2024-01-25',
-    expectedDeliveryDate: '2024-02-25',
-    status: 'pending',
-    priority: 'low',
-    purchaser: '최구매',
-    paymentTerms: '계산서 발행 후 30일',
-    deliveryAddress: '경기도 안양시 동안구 시민대로 123',
-    specialRequirements: 'MSDS 제공 필수',
-    notes: '신규 공급업체',
-    createdAt: '2024-01-25',
-    updatedAt: '2024-01-25'
-  }
-];
 
 const OrderingInfo: React.FC = () => {
+  // 스타일 추가
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  
   // 상태 관리
-  const [orderingData, setOrderingData] = useState<OrderingData[]>(INITIAL_DATA);
+  const [orderingData, setOrderingData] = useState<OrderingData[]>([]);
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<OrderingData>>({});
   const [showForm, setShowForm] = useState(false);
+
+  // 데이터 로드
+  const loadOrderingData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setOrderingData(response.data);
+      } else {
+        console.error('발주 정보 조회 실패:', response.error);
+        // 로드 실패시 빈 배열로 초기화
+        setOrderingData([]);
+      }
+    } catch (error) {
+      console.error('발주 정보 조회 중 오류:', error);
+      setOrderingData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트시 데이터 로드
+  useEffect(() => {
+    loadOrderingData();
+  }, [loadOrderingData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
-    setFormData({});
     setEditingId(null);
     setShowForm(true);
   }, []);
 
   const handleEdit = useCallback((id: number) => {
-    const item = orderingData.find(d => d.id === id);
-    if (item) {
-      setFormData(item);
-      setEditingId(id);
-      setShowForm(true);
-    }
-  }, [orderingData]);
-
-  const handleDelete = useCallback((id: number) => {
-    if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setOrderingData(prev => prev.filter(d => d.id !== id));
-    }
+    setEditingId(id);
+    setShowForm(true);
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (!formData.orderId || !formData.supplierName || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
+  const handleDelete = useCallback(async (id: number) => {
+    if (window.confirm('정말로 삭제하시겠습니까?')) {
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          alert('발주 정보가 성공적으로 삭제되었습니다.');
+          loadOrderingData(); // 데이터 다시 로드
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
+  }, [loadOrderingData]);
 
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as OrderingData;
-      setOrderingData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...orderingData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as OrderingData;
-      setOrderingData(prev => [...prev, newItem]);
-    }
-    
+  // 모달에서 CRUD 성공시 데이터 다시 로드
+  const handleModalSuccess = useCallback(() => {
+    loadOrderingData();
     handleCloseForm();
-  }, [editingId, formData, orderingData]);
+  }, [loadOrderingData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
-    setFormData({});
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['orderQuantity', 'unitPrice', 'totalAmount'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
 
   // 통계 계산
-  const totalOrders = orderingData.length;
-  const orderedOrders = orderingData.filter(item => item.status === 'ordered').length;
-  const deliveredOrders = orderingData.filter(item => item.status === 'delivered').length;
-  const totalAmount = orderingData.reduce((sum, item) => sum + item.totalAmount, 0);
+  const safeOrderingData = Array.isArray(orderingData) ? orderingData : [];
+  const totalOrders = safeOrderingData.length;
+  const orderedOrders = safeOrderingData.filter((item: OrderingData) => item.status === 'ordered').length;
+  const deliveredOrders = safeOrderingData.filter((item: OrderingData) => item.status === 'delivered').length;
+  const totalAmount = safeOrderingData.reduce((sum, item) => sum + (item.orderQuantity * item.unitPrice || 0), 0);
 
   return (
     <div style={STYLES.container}>
@@ -352,9 +280,31 @@ const OrderingInfo: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ minWidth: '100%' }}>
-              <thead>
+          {loading ? (
+            <div style={{
+              padding: '80px',
+              textAlign: 'center',
+              background: 'white'
+            }}>
+              <div style={{
+                display: 'inline-block',
+                width: '40px',
+                height: '40px',
+                border: '4px solid #f3f4f6',
+                borderTop: '4px solid #f59e0b',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+              <p style={{
+                marginTop: '16px',
+                color: '#6b7280',
+                fontSize: '16px'
+              }}>발주 정보를 불러오는 중...</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ minWidth: '100%' }}>
+                <thead>
                 <tr style={{
                   background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)'
                 }}>
@@ -469,7 +419,7 @@ const OrderingInfo: React.FC = () => {
                 </tr>
               </thead>
               <tbody style={{ backgroundColor: 'white' }}>
-                {orderingData.map((item, index) => (
+                {safeOrderingData.map((item, index) => (
                   <OrderingTableRow 
                     key={item.id} 
                     item={item} 
@@ -478,9 +428,10 @@ const OrderingInfo: React.FC = () => {
                     onDelete={handleDelete}
                   />
                 ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -488,10 +439,8 @@ const OrderingInfo: React.FC = () => {
       <OrderingModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );

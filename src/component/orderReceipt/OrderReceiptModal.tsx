@@ -353,31 +353,25 @@ const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                     onClick={() => setShowCustomerSearch(true)}
                     style={{
                       padding: '12px 16px',
-                      backgroundColor: '#3b82f6',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '12px',
                       cursor: 'pointer',
                       fontWeight: '600',
                       fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
                       transition: 'all 0.2s ease',
                       boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                     }}
                     onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#2563eb';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)';
                       e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#3b82f6';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)';
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
                     검색
                   </button>
                 </div>
@@ -457,31 +451,25 @@ const OrderReceiptModal: React.FC<OrderReceiptModalProps> = ({
                     onClick={() => setShowProductSearch(true)}
                     style={{
                       padding: '12px 16px',
-                      backgroundColor: '#10b981',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '12px',
                       cursor: 'pointer',
                       fontWeight: '600',
                       fontSize: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
                       transition: 'all 0.2s ease',
                       boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                     }}
                     onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)';
                       e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#10b981';
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)';
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
                     검색
                   </button>
                 </div>
