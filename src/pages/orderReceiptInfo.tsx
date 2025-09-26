@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import OrderReceiptStatCard from '../component/orderReceipt/OrderReceiptStatCard';
 import OrderReceiptTableRow from '../component/orderReceipt/OrderReceiptTableRow';
 import OrderReceiptModal from '../component/orderReceipt/OrderReceiptModal';
 import { OrderReceiptData } from '../types/orderReceipt';
+import { getBusinesses, deleteBusiness } from '../api/orderApi';
 
 // 스타일 상수
 const STYLES = {
@@ -44,103 +45,39 @@ const STYLES = {
 } as const;
 
 // 초기 데이터
-const INITIAL_DATA: OrderReceiptData[] = [
-  {
-    id: 1,
-    orderId: 'ORDER2024001',
-    customerId: 'CUST001',
-    customerName: '삼성전자',
-    productCode: 'PROD001',
-    productName: '스마트폰 케이스',
-    orderQuantity: 1000,
-    unitPrice: 15000,
-    totalAmount: 15000000,
-    orderDate: '2024-01-15',
-    deliveryDate: '2024-02-15',
-    status: 'confirmed',
-    priority: 'high',
-    salesPerson: '김영업',
-    paymentTerms: '계산서 발행 후 30일',
-    shippingAddress: '경기도 수원시 영통구 삼성로 129',
-    specialInstructions: '품질 검사 강화 필요',
-    notes: 'VIP 고객 주문',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-20'
-  },
-  {
-    id: 2,
-    orderId: 'ORDER2024002',
-    customerId: 'CUST002',
-    customerName: 'LG전자',
-    productCode: 'PROD002',
-    productName: '무선 이어폰',
-    orderQuantity: 500,
-    unitPrice: 80000,
-    totalAmount: 40000000,
-    orderDate: '2024-01-20',
-    deliveryDate: '2024-02-20',
-    status: 'in_production',
-    priority: 'medium',
-    salesPerson: '이영업',
-    paymentTerms: '선불',
-    shippingAddress: '서울특별시 강남구 테헤란로 152',
-    specialInstructions: '음질 테스트 필수',
-    notes: '정기 주문',
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-25'
-  },
-  {
-    id: 3,
-    orderId: 'ORDER2024003',
-    customerId: 'CUST003',
-    customerName: '현대자동차',
-    productCode: 'PROD003',
-    productName: '면 티셔츠',
-    orderQuantity: 2000,
-    unitPrice: 8000,
-    totalAmount: 16000000,
-    orderDate: '2024-01-10',
-    deliveryDate: '2024-02-10',
-    status: 'completed',
-    priority: 'low',
-    salesPerson: '박영업',
-    paymentTerms: '계산서 발행 후 15일',
-    shippingAddress: '서울특별시 강남구 테헤란로 231',
-    specialInstructions: '색상 일치 확인',
-    notes: '기업복 주문',
-    createdAt: '2024-01-10',
-    updatedAt: '2024-02-10'
-  },
-  {
-    id: 4,
-    orderId: 'ORDER2024004',
-    customerId: 'CUST004',
-    customerName: 'SK하이닉스',
-    productCode: 'PROD004',
-    productName: '노트북 스탠드',
-    orderQuantity: 300,
-    unitPrice: 25000,
-    totalAmount: 7500000,
-    orderDate: '2024-01-25',
-    deliveryDate: '2024-02-25',
-    status: 'pending',
-    priority: 'low',
-    salesPerson: '최영업',
-    paymentTerms: '계산서 발행 후 30일',
-    shippingAddress: '경기도 이천시 부발읍 공단로 209',
-    specialInstructions: '안정성 테스트 필수',
-    notes: '신규 고객',
-    createdAt: '2024-01-25',
-    updatedAt: '2024-01-25'
-  }
-];
+
 
 const OrderReceiptInfo: React.FC = () => {
   // 상태 관리
-  const [orderData, setOrderData] = useState<OrderReceiptData[]>(INITIAL_DATA);
+  const [orderData, setOrderData] = useState<OrderReceiptData[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<OrderReceiptData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // API에서 수주 데이터 로드
+  const loadOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setOrderData(response.data);
+        console.log('API 응답:', response);
+        console.log('로드된 데이터:', response.data);
+      } else {
+        console.error('수주 데이터 로드 실패:', response.error);
+      }
+    } catch (error) {
+      console.error('수주 데이터 로드 중 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -158,39 +95,26 @@ const OrderReceiptInfo: React.FC = () => {
     }
   }, [orderData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setOrderData(prev => prev.filter(d => d.id !== id));
+      try {
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          await loadOrders(); // 삭제 후 데이터 다시 로드
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      }
     }
-  }, []);
+  }, [loadOrders]);
 
-  const handleSave = useCallback(() => {
-    if (!formData.orderId || !formData.customerName || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as OrderReceiptData;
-      setOrderData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...orderData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as OrderReceiptData;
-      setOrderData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, orderData]);
+  // 모달 성공 시 데이터 다시 로드
+  const handleModalSuccess = useCallback(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -206,11 +130,48 @@ const OrderReceiptInfo: React.FC = () => {
     }));
   }, []);
 
+  // 로딩 스피너 컴포넌트
+  const LoadingSpinner = () => (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '40px',
+      color: '#8b5cf6'
+    }}>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '4px solid #e5e7eb',
+        borderTop: '4px solid #8b5cf6',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite'
+      }} />
+      <span style={{ marginLeft: '12px', fontSize: '16px' }}>데이터를 불러오는 중...</span>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+    </div>
+  );
+
   // 통계 계산
   const totalOrders = orderData.length;
   const confirmedOrders = orderData.filter(item => item.status === 'confirmed').length;
   const inProductionOrders = orderData.filter(item => item.status === 'in_production').length;
-  const totalAmount = orderData.reduce((sum, item) => sum + item.totalAmount, 0);
+  const totalAmount = orderData.reduce((sum, item) => {
+    let amount = 0;
+    if (typeof item.totalAmount === 'number') {
+      amount = item.totalAmount;
+    } else if (typeof item.totalAmount === 'string') {
+      amount = parseFloat(item.totalAmount);
+    }
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
 
   return (
     <div style={STYLES.container}>
@@ -351,6 +312,9 @@ const OrderReceiptInfo: React.FC = () => {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
+            {loading ? (
+              <LoadingSpinner />
+            ) : (
             <table style={{ minWidth: '100%' }}>
               <thead>
                 <tr style={{
@@ -469,6 +433,7 @@ const OrderReceiptInfo: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
       </div>
@@ -477,10 +442,9 @@ const OrderReceiptInfo: React.FC = () => {
       <OrderReceiptModal
         show={showForm}
         editingId={editingId}
-        formData={formData}
+        initialData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );

@@ -11,7 +11,7 @@ export interface OrderReceiptData {
   orderDate: string;
   deliveryDate: string;
   status: 'pending' | 'confirmed' | 'in_production' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   salesPerson: string;
   paymentTerms: string;
   shippingAddress: string;
