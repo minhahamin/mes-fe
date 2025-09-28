@@ -37,7 +37,7 @@ const ShipmentTableRow: React.FC<ShipmentTableRowProps> = ({ item, index, onEdit
   const getPriorityBadge = (priority: string) => {
     const priorityMap = {
       low: { text: '낮음', color: '#f3f4f6', textColor: '#6b7280' },
-      medium: { text: '보통', color: '#dbeafe', textColor: '#1e40af' },
+      normal: { text: '보통', color: '#dbeafe', textColor: '#1e40af' },
       high: { text: '높음', color: '#fef3c7', textColor: '#d97706' },
       urgent: { text: '긴급', color: '#fee2e2', textColor: '#991b1b' }
     };
@@ -58,11 +58,13 @@ const ShipmentTableRow: React.FC<ShipmentTableRowProps> = ({ item, index, onEdit
     );
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string) => {
+    // 문자열인 경우 숫자로 변환
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW'
-    }).format(amount);
+    }).format(numAmount);
   };
 
   return (
@@ -123,7 +125,7 @@ const ShipmentTableRow: React.FC<ShipmentTableRowProps> = ({ item, index, onEdit
         </div>
       </td>
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-        {item.quantity}개
+        {(typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity).toLocaleString('ko-KR')}개
       </td>
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         {getStatusBadge(item.status)}

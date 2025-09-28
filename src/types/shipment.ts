@@ -10,7 +10,7 @@ export interface ShipmentData {
   expectedDeliveryDate: string;
   actualDeliveryDate?: string;
   status: 'preparing' | 'shipped' | 'in_transit' | 'delivered' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   carrier: string;
   trackingNumber?: string;
   shippingAddress: string;

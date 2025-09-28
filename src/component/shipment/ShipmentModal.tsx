@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { ShipmentData } from '../../types/shipment';
+import { createBusiness, updateBusiness, deleteBusiness } from '../../api/shipmentApi';
+import OrderSearchModal from './OrderSearchModal';
 
 interface ShipmentModalProps {
   show: boolean;
   editingId: number | null;
   formData: Partial<ShipmentData>;
   onClose: () => void;
-  onSave: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSuccess: () => void;
 }
 
 const ShipmentModal: React.FC<ShipmentModalProps> = ({ 
@@ -15,9 +16,139 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
   editingId, 
   formData, 
   onClose, 
-  onSave, 
-  onInputChange 
+  onSuccess 
 }) => {
+  // 상태 관리
+  const [currentFormData, setCurrentFormData] = useState<Partial<ShipmentData>>(formData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [showOrderSearch, setShowOrderSearch] = useState(false);
+
+  // 폼 데이터 초기화
+  React.useEffect(() => {
+    setCurrentFormData(formData);
+    setError(null);
+    setIsDeleteMode(false);
+  }, [formData, show]);
+
+  // 입력 변경 핸들러
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    if (['quantity', 'shippingCost'].includes(name)) {
+      // 숫자 필드의 경우 천단위 구분 제거 후 숫자로 변환
+      const numericValue = value.replace(/,/g, '');
+      const numValue = numericValue === '' ? 0 : Number(numericValue) || 0;
+      
+      setCurrentFormData(prev => ({ 
+        ...prev, 
+        [name]: numValue
+      }));
+    } else {
+      setCurrentFormData(prev => ({ 
+        ...prev, 
+        [name]: value 
+      }));
+    }
+  }, []);
+
+  // 숫자 포맷팅 함수
+  const formatNumber = useCallback((value: number | string | undefined) => {
+    if (value === undefined || value === null || value === '') return '';
+    const num = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+    return isNaN(num) ? '' : num.toLocaleString('ko-KR');
+  }, []);
+
+  // 저장 핸들러
+  const handleSave = useCallback(async () => {
+    if (!currentFormData.customerName || !currentFormData.productName) {
+      setError('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      let response;
+      if (editingId) {
+        // 수정
+        response = await updateBusiness({
+          ...currentFormData,
+          id: editingId
+        } as any);
+      } else {
+        // 추가
+        response = await createBusiness(currentFormData as any);
+      }
+
+      if (response.success) {
+        alert(response.message || '저장되었습니다.');
+        onSuccess();
+      } else {
+        setError(response.error || '저장에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('저장 실패:', err);
+      setError('저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentFormData, editingId, onSuccess]);
+
+  // 삭제 핸들러
+  const handleDelete = useCallback(async () => {
+    if (!editingId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await deleteBusiness(editingId);
+      
+      if (response.success) {
+        alert(response.message || '삭제되었습니다.');
+        onSuccess();
+      } else {
+        setError(response.error || '삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('삭제 실패:', err);
+      setError('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [editingId, onSuccess]);
+
+  // 삭제 모드 토글
+  const toggleDeleteMode = useCallback(() => {
+    setIsDeleteMode(prev => !prev);
+    setError(null);
+  }, []);
+
+  // 수주 검색 모달 열기
+  const handleOpenOrderSearch = useCallback(() => {
+    setShowOrderSearch(true);
+  }, []);
+
+  // 수주 검색 모달 닫기
+  const handleCloseOrderSearch = useCallback(() => {
+    setShowOrderSearch(false);
+  }, []);
+
+  // 수주 선택 시 폼 데이터 업데이트
+  const handleOrderSelect = useCallback((order: any) => {
+    setCurrentFormData(prev => ({
+      ...prev,
+      orderId: order.orderId,
+      customerName: order.customerName,
+      productCode: order.productCode,
+      productName: order.productName,
+      quantity: order.orderQuantity || 0
+    }));
+  }, []);
+
   if (!show) return null;
 
   return (
@@ -76,14 +207,14 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                   color: 'white',
                   margin: 0
                 }}>
-                  {editingId ? '출하 정보 수정' : '새 출하 추가'}
+                  {isDeleteMode ? '출하 정보 삭제' : editingId ? '출하 정보 수정' : '새 출하 추가'}
                 </h3>
                 <p style={{ 
                   color: '#fecaca', 
                   marginTop: '4px',
                   margin: 0
                 }}>
-                  {editingId ? '기존 출하 정보를 수정합니다' : '수주관리 기반으로 새로운 출하 정보를 입력합니다'}
+                  {isDeleteMode ? '정말로 이 출하 정보를 삭제하시겠습니까?' : editingId ? '기존 출하 정보를 수정합니다' : '수주관리 기반으로 새로운 출하 정보를 입력합니다'}
                 </p>
               </div>
             </div>
@@ -116,7 +247,89 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
 
         {/* 모달 바디 */}
         <div style={{ padding: '32px' }}>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* 에러 메시지 */}
+          {error && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              border: '1px solid #fecaca'
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          {isDeleteMode ? (
+            /* 삭제 확인 폼 */
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <div style={{
+                fontSize: '48px',
+                color: '#ef4444',
+                marginBottom: '16px'
+              }}>
+                ⚠️
+              </div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                출하 정보를 삭제하시겠습니까?
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '32px'
+              }}>
+                이 작업은 되돌릴 수 없습니다.
+              </p>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '16px'
+              }}>
+                <button
+                  type="button"
+                  onClick={toggleDeleteMode}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: loading ? '#9ca3af' : '#ef4444',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {loading ? '삭제 중...' : '삭제'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* 일반 폼 */
+            <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -129,12 +342,12 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>출하 ID *</label>
+                }}>출하 ID</label>
                 <input
                   type="text"
                   name="shipmentId"
-                  value={formData.shipmentId || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.shipmentId || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -154,7 +367,6 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
                   placeholder="SH001"
-                  required
                 />
               </div>
               <div>
@@ -165,32 +377,59 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                   color: '#374151', 
                   marginBottom: '8px' 
                 }}>수주 ID *</label>
-                <input
-                  type="text"
-                  name="orderId"
-                  value={formData.orderId || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#ef4444';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="ORDER2024001"
-                  required
-                />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    name="orderId"
+                    value={currentFormData.orderId || ''}
+                    onChange={handleInputChange}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#ef4444';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                    placeholder="ORDER2024001"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleOpenOrderSearch}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      color: 'white',
+                      borderRadius: '12px',
+                      fontWeight: '600',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                      e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                  >
+                    검색
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={{ 
@@ -203,8 +442,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="customerName"
-                  value={formData.customerName || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.customerName || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -238,8 +477,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="productCode"
-                  value={formData.productCode || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.productCode || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -273,8 +512,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="productName"
-                  value={formData.productName || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.productName || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -306,10 +545,10 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                   marginBottom: '8px' 
                 }}>수량 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="quantity"
-                  value={formData.quantity || ''}
-                  onChange={onInputChange}
+                  value={formatNumber(currentFormData.quantity)}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -328,7 +567,7 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="1000"
+                  placeholder="1,000"
                   required
                 />
               </div>
@@ -343,8 +582,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="date"
                   name="shipmentDate"
-                  value={formData.shipmentDate || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.shipmentDate || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -377,8 +616,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="date"
                   name="expectedDeliveryDate"
-                  value={formData.expectedDeliveryDate || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.expectedDeliveryDate || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -411,8 +650,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="date"
                   name="actualDeliveryDate"
-                  value={formData.actualDeliveryDate || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.actualDeliveryDate || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -443,8 +682,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 }}>상태 *</label>
                 <select
                   name="status"
-                  value={formData.status || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.status || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -484,8 +723,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 }}>우선순위 *</label>
                 <select
                   name="priority"
-                  value={formData.priority || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.priority || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -509,7 +748,7 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 >
                   <option value="">선택하세요</option>
                   <option value="low">낮음</option>
-                  <option value="medium">보통</option>
+                  <option value="normal">보통</option>
                   <option value="high">높음</option>
                   <option value="urgent">긴급</option>
                 </select>
@@ -525,8 +764,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="carrier"
-                  value={formData.carrier || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.carrier || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -560,8 +799,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="trackingNumber"
-                  value={formData.trackingNumber || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.trackingNumber || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -594,8 +833,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="shippingAddress"
-                  value={formData.shippingAddress || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.shippingAddress || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -627,10 +866,10 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                   marginBottom: '8px' 
                 }}>배송비 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="shippingCost"
-                  value={formData.shippingCost || ''}
-                  onChange={onInputChange}
+                  value={formatNumber(currentFormData.shippingCost)}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -649,7 +888,7 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="50000"
+                  placeholder="50,000"
                   required
                 />
               </div>
@@ -664,8 +903,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="responsiblePerson"
-                  value={formData.responsiblePerson || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.responsiblePerson || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -699,8 +938,8 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
                 <input
                   type="text"
                   name="notes"
-                  value={formData.notes || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.notes || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -727,67 +966,90 @@ const ShipmentModal: React.FC<ShipmentModalProps> = ({
             {/* 버튼 영역 */}
             <div style={{
               display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '16px',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               paddingTop: '24px',
               borderTop: '1px solid #e5e7eb'
             }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#e5e7eb';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                  e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                }}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                style={{
-                  padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {editingId ? '수정 완료' : '추가 완료'}
-              </button>
+              {/* 삭제 버튼 (수정 모드일 때만 표시) */}
+              {editingId && !isDeleteMode && (
+                <button
+                  type="button"
+                  onClick={toggleDeleteMode}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    border: '1px solid #fecaca',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fef2f2';
+                    e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                  }}
+                >
+                  삭제
+                </button>
+              )}
+
+              <div style={{ display: 'flex', gap: '16px', marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: loading ? '#f3f4f6' : '#f3f4f6',
+                    color: loading ? '#9ca3af' : '#374151',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 24px',
+                    background: loading ? '#9ca3af' : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {loading ? '처리 중...' : editingId ? '수정 완료' : '추가 완료'}
+                </button>
+              </div>
             </div>
           </form>
+          )}
         </div>
       </div>
+
+      {/* 수주 검색 모달 */}
+      <OrderSearchModal
+        show={showOrderSearch}
+        onClose={handleCloseOrderSearch}
+        onSelect={handleOrderSelect}
+      />
     </div>
   );
 };

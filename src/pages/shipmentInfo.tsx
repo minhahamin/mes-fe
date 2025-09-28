@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ShipmentStatCard from '../component/shipment/ShipmentStatCard';
 import ShipmentTableRow from '../component/shipment/ShipmentTableRow';
 import ShipmentModal from '../component/shipment/ShipmentModal';
 import { ShipmentData } from '../types/shipment';
+import { getBusinesses } from '../api/shipmentApi';
 
 // 스타일 상수
 const STYLES = {
@@ -43,102 +44,45 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터 (수주관리 기반)
-const INITIAL_DATA: ShipmentData[] = [
-  {
-    id: 1,
-    shipmentId: 'SH001',
-    orderId: 'ORDER2024001',
-    customerName: '삼성전자',
-    productCode: 'PROD001',
-    productName: '스마트폰 케이스',
-    quantity: 1000,
-    shipmentDate: '2024-01-20',
-    expectedDeliveryDate: '2024-01-25',
-    actualDeliveryDate: '2024-01-24',
-    status: 'delivered',
-    priority: 'high',
-    carrier: 'CJ대한통운',
-    trackingNumber: '1234567890',
-    shippingAddress: '경기도 수원시 영통구 삼성로 129',
-    shippingCost: 50000,
-    responsiblePerson: '김출하',
-    notes: 'ORDER2024001 수주 기반 출하 완료 - 스마트폰 케이스 1000개',
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-24'
-  },
-  {
-    id: 2,
-    shipmentId: 'SH002',
-    orderId: 'ORDER2024002',
-    customerName: 'LG전자',
-    productCode: 'PROD002',
-    productName: '무선 이어폰',
-    quantity: 500,
-    shipmentDate: '2024-01-25',
-    expectedDeliveryDate: '2024-01-30',
-    status: 'in_transit',
-    priority: 'medium',
-    carrier: '한진택배',
-    trackingNumber: '0987654321',
-    shippingAddress: '서울특별시 강남구 테헤란로 152',
-    shippingCost: 30000,
-    responsiblePerson: '이출하',
-    notes: 'ORDER2024002 수주 기반 출하 진행중 - 무선 이어폰 500개',
-    createdAt: '2024-01-25',
-    updatedAt: '2024-01-25'
-  },
-  {
-    id: 3,
-    shipmentId: 'SH003',
-    orderId: 'ORDER2024003',
-    customerName: '현대자동차',
-    productCode: 'PROD003',
-    productName: '면 티셔츠',
-    quantity: 2000,
-    shipmentDate: '2024-01-15',
-    expectedDeliveryDate: '2024-01-20',
-    actualDeliveryDate: '2024-01-18',
-    status: 'delivered',
-    priority: 'low',
-    carrier: '로젠택배',
-    trackingNumber: '1122334455',
-    shippingAddress: '서울특별시 강남구 테헤란로 231',
-    shippingCost: 25000,
-    responsiblePerson: '박출하',
-    notes: 'ORDER2024003 수주 기반 출하 완료 - 면 티셔츠 2000개',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-18'
-  },
-  {
-    id: 4,
-    shipmentId: 'SH004',
-    orderId: 'ORDER2024004',
-    customerName: 'SK하이닉스',
-    productCode: 'PROD004',
-    productName: '노트북 스탠드',
-    quantity: 300,
-    shipmentDate: '2024-01-30',
-    expectedDeliveryDate: '2024-02-05',
-    status: 'preparing',
-    priority: 'low',
-    carrier: 'CJ대한통운',
-    trackingNumber: '5566778899',
-    shippingAddress: '경기도 이천시 부발읍 공단로 209',
-    shippingCost: 15000,
-    responsiblePerson: '최출하',
-    notes: 'ORDER2024004 수주 기반 출하 준비중 - 노트북 스탠드 300개',
-    createdAt: '2024-01-30',
-    updatedAt: '2024-01-30'
-  }
-];
+
 
 const ShipmentInfo: React.FC = () => {
   // 상태 관리
-  const [shipmentData, setShipmentData] = useState<ShipmentData[]>(INITIAL_DATA);
+  const [shipmentData, setShipmentData] = useState<ShipmentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ShipmentData>>({});
   const [showForm, setShowForm] = useState(false);
+
+  // 데이터 로드
+  const loadShipmentData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getBusinesses();
+      
+      if (response.success && response.data) {
+        setShipmentData(response.data);
+      } else {
+        setError(response.error || '데이터를 불러오는데 실패했습니다.');
+        // 에러 시 초기 데이터 사용
+        setShipmentData([]);
+      }
+    } catch (err) {
+      console.error('출하 데이터 로드 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+      // 에러 시 빈 배열로 설정
+      setShipmentData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadShipmentData();
+  }, [loadShipmentData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -158,37 +102,12 @@ const ShipmentInfo: React.FC = () => {
 
   const handleDelete = useCallback((id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setShipmentData(prev => prev.filter(d => d.id !== id));
+      // 삭제는 모달에서 처리
+      setFormData({ id });
+      setEditingId(id);
+      setShowForm(true);
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.shipmentId || !formData.customerName || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as ShipmentData;
-      setShipmentData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...shipmentData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as ShipmentData;
-      setShipmentData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, shipmentData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -196,19 +115,43 @@ const ShipmentInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['quantity', 'shippingCost'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
+  const handleFormSuccess = useCallback(() => {
+    // 폼 성공 후 데이터 새로고침
+    loadShipmentData();
+    handleCloseForm();
+  }, [loadShipmentData, handleCloseForm]);
 
   // 통계 계산
   const totalShipments = shipmentData.length;
   const deliveredShipments = shipmentData.filter(item => item.status === 'delivered').length;
   const inTransitShipments = shipmentData.filter(item => item.status === 'in_transit').length;
-  const totalShippingCost = shipmentData.reduce((sum, item) => sum + item.shippingCost, 0);
+  const totalShippingCost = shipmentData.reduce((sum, item) => {
+    // shippingCost가 문자열인 경우 숫자로 변환
+    const cost = typeof item.shippingCost === 'string' ? 
+      parseFloat(item.shippingCost) || 0 : 
+      (item.shippingCost || 0);
+    return sum + cost;
+  }, 0);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={STYLES.content}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '50vh',
+            fontSize: '18px',
+            color: '#6b7280'
+          }}>
+            데이터를 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -224,6 +167,18 @@ const ShipmentInfo: React.FC = () => {
             <div>
               <h1 style={STYLES.title}>출하 관리</h1>
               <p style={STYLES.subtitle}>수주관리 기반으로 제품 출하를 체계적으로 관리하고 추적합니다</p>
+              {error && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}>
+                  ⚠️ {error}
+                </div>
+              )}
             </div>
           </div>
           
@@ -272,7 +227,7 @@ const ShipmentInfo: React.FC = () => {
             
             <ShipmentStatCard
               title="총 배송비"
-              value={new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(totalShippingCost)}
+              value={isNaN(totalShippingCost) ? '0원' : `${totalShippingCost.toLocaleString('ko-KR')}원`}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#8b5cf6' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -477,8 +432,7 @@ const ShipmentInfo: React.FC = () => {
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );
