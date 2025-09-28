@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DeliveryStatCard from '../component/delivery/DeliveryStatCard';
 import DeliveryTableRow from '../component/delivery/DeliveryTableRow';
 import DeliveryModal from '../component/delivery/DeliveryModal';
 import { DeliveryData } from '../types/delivery';
+import { getBusinesses, deleteBusiness } from '../api/deliveryApi';
 
 // 스타일 상수
 const STYLES = {
@@ -75,7 +76,7 @@ const INITIAL_DATA: DeliveryData[] = [
     deliveryDate: '2024-01-30',
     expectedTime: '10:00',
     status: 'scheduled',
-    priority: 'medium',
+    priority: 'normal',
     driver: '이배송',
     vehicle: '중형트럭-002',
     deliveryFee: 30000,
@@ -125,10 +126,41 @@ const INITIAL_DATA: DeliveryData[] = [
 
 const DeliveryInfo: React.FC = () => {
   // 상태 관리
-  const [deliveryData, setDeliveryData] = useState<DeliveryData[]>(INITIAL_DATA);
+  const [deliveryData, setDeliveryData] = useState<DeliveryData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<DeliveryData>>({});
   const [showForm, setShowForm] = useState(false);
+
+  // 데이터 로드
+  const loadDeliveryData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getBusinesses();
+      
+      if (response.success && response.data) {
+        setDeliveryData(response.data);
+      } else {
+        setError(response.error || '데이터를 불러오는데 실패했습니다.');
+        // 에러 시 초기 데이터 사용
+        setDeliveryData(INITIAL_DATA);
+      }
+    } catch (err) {
+      console.error('납품 데이터 로드 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+      // 에러 시 초기 데이터 사용
+      setDeliveryData(INITIAL_DATA);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadDeliveryData();
+  }, [loadDeliveryData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -146,39 +178,26 @@ const DeliveryInfo: React.FC = () => {
     }
   }, [deliveryData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setDeliveryData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          // 로컬 상태에서도 제거
+          setDeliveryData(prev => prev.filter(d => d.id !== id));
+          alert('납품 정보가 성공적으로 삭제되었습니다.');
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('납품 정보 삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.deliveryId || !formData.customerName || !formData.deliveryAddress) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as DeliveryData;
-      setDeliveryData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...deliveryData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as DeliveryData;
-      setDeliveryData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, deliveryData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -186,19 +205,43 @@ const DeliveryInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['deliveryFee'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
+  const handleFormSuccess = useCallback(() => {
+    // 폼 성공 후 데이터 새로고침
+    loadDeliveryData();
+    handleCloseForm();
+  }, [loadDeliveryData, handleCloseForm]);
 
   // 통계 계산
   const totalDeliveries = deliveryData.length;
   const deliveredDeliveries = deliveryData.filter(item => item.status === 'delivered').length;
   const scheduledDeliveries = deliveryData.filter(item => item.status === 'scheduled').length;
-  const totalDeliveryFee = deliveryData.reduce((sum, item) => sum + item.deliveryFee, 0);
+  const totalDeliveryFee = deliveryData.reduce((sum, item) => {
+    // deliveryFee가 문자열인 경우 숫자로 변환
+    const fee = typeof item.deliveryFee === 'string' ? 
+      parseFloat(item.deliveryFee) || 0 : 
+      (item.deliveryFee || 0);
+    return sum + fee;
+  }, 0);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={STYLES.content}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '50vh',
+            fontSize: '18px',
+            color: '#6b7280'
+          }}>
+            데이터를 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -214,6 +257,18 @@ const DeliveryInfo: React.FC = () => {
             <div>
               <h1 style={STYLES.title}>납품 관리</h1>
               <p style={STYLES.subtitle}>출하관리 기반으로 제품 납품을 체계적으로 관리하고 추적합니다</p>
+              {error && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}>
+                  ⚠️ {error}
+                </div>
+              )}
             </div>
           </div>
           
@@ -262,7 +317,7 @@ const DeliveryInfo: React.FC = () => {
             
             <DeliveryStatCard
               title="총 납품비"
-              value={new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(totalDeliveryFee)}
+              value={isNaN(totalDeliveryFee) ? '0원' : `${totalDeliveryFee.toLocaleString('ko-KR')}원`}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#8b5cf6' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -467,8 +522,7 @@ const DeliveryInfo: React.FC = () => {
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );

@@ -8,7 +8,7 @@ export interface DeliveryData {
   expectedTime: string;
   actualTime?: string;
   status: 'scheduled' | 'in_progress' | 'delivered' | 'failed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   driver: string;
   vehicle: string;
   deliveryFee: number;

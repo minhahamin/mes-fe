@@ -3,7 +3,7 @@ import ShipmentStatCard from '../component/shipment/ShipmentStatCard';
 import ShipmentTableRow from '../component/shipment/ShipmentTableRow';
 import ShipmentModal from '../component/shipment/ShipmentModal';
 import { ShipmentData } from '../types/shipment';
-import { getBusinesses } from '../api/shipmentApi';
+import { getBusinesses, deleteBusiness } from '../api/shipmentApi';
 
 // 스타일 상수
 const STYLES = {
@@ -100,12 +100,24 @@ const ShipmentInfo: React.FC = () => {
     }
   }, [shipmentData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      // 삭제는 모달에서 처리
-      setFormData({ id });
-      setEditingId(id);
-      setShowForm(true);
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          // 로컬 상태에서도 제거
+          setShipmentData(prev => prev.filter(d => d.id !== id));
+          alert('출하 정보가 성공적으로 삭제되었습니다.');
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('출하 정보 삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
 
