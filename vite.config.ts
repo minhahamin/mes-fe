@@ -52,8 +52,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ui: ['@headlessui/react', '@heroicons/react'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
         },
       },
     },

@@ -6,7 +6,10 @@ export interface OrderingData {
   productCode: string; // 제품 코드
   productName: string; // 제품명
   orderQuantity: number; // 발주 수량
+  quantity?: number; // 수량 (호환성)
   unitPrice: number; // 단가
+  totalAmount?: number; // 총액 (호환성)
+  purchasePerson?: string; // 구매 담당자 (호환성)
   orderDate: string; // 발주 일자
   expectedDeliveryDate: string; // 예상 납기일
   actualDeliveryDate?: string; // 실제 납기일

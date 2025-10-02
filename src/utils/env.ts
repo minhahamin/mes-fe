@@ -74,7 +74,7 @@ class EnvManager {
     defaultValue: T, 
     type: 'string' | 'number' | 'boolean' | 'theme' | 'environment' | 'logLevel' = 'string'
   ): T {
-    const value = import.meta.env[key];
+    const value = (import.meta as any).env[key];
     
     if (value === undefined || value === '') {
       return defaultValue;

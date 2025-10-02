@@ -199,13 +199,7 @@ const OrderReceiptSearchModal: React.FC<OrderReceiptSearchModalProps> = ({
                     backgroundColor: 'white',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    marginBottom: '8px',
-                    ':hover': {
-                      borderColor: '#f59e0b',
-                      backgroundColor: '#fef3c7',
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }
+                    marginBottom: '8px'
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.borderColor = '#f59e0b';
