@@ -37,7 +37,7 @@ const ProductionOrderTableRow: React.FC<ProductionOrderTableRowProps> = ({ item,
   const getPriorityBadge = (priority: string) => {
     const priorityMap = {
       low: { text: '낮음', color: '#f3f4f6', textColor: '#6b7280' },
-      medium: { text: '보통', color: '#dbeafe', textColor: '#1e40af' },
+      normal: { text: '보통', color: '#dbeafe', textColor: '#1e40af' },
       high: { text: '높음', color: '#fef3c7', textColor: '#d97706' },
       urgent: { text: '긴급', color: '#fee2e2', textColor: '#991b1b' }
     };

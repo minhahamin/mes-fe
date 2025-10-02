@@ -8,7 +8,7 @@ export interface ProductionOrderData {
   startDate: string;
   endDate: string;
   status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   workCenter: string;
   supervisor: string;
   operator: string;

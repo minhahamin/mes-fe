@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ProductionStatusStatCard from '../component/productionStatus/ProductionStatusStatCard';
 import ProductionStatusTableRow from '../component/productionStatus/ProductionStatusTableRow';
-import ProductionStatusModal from '../component/productionStatus/ProductionStatusModal';
 import { ProductionStatusData } from '../types/productionStatus';
+import { getBusinesses } from '../api/productionStatusApi';
 
 // 스타일 상수
 const STYLES = {
@@ -136,75 +136,83 @@ const INITIAL_DATA: ProductionStatusData[] = [
 
 const ProductionStatusInfo: React.FC = () => {
   // 상태 관리
-  const [productionData, setProductionData] = useState<ProductionStatusData[]>(INITIAL_DATA);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<ProductionStatusData>>({});
-  const [showForm, setShowForm] = useState(false);
+  const [productionData, setProductionData] = useState<ProductionStatusData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 핸들러 함수들
-  const handleAdd = useCallback(() => {
-    setFormData({});
-    setEditingId(null);
-    setShowForm(true);
+  // 데이터 로드
+  const loadProductionData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getBusinesses();
+      
+      if (response.success && response.data) {
+        // API 데이터를 ProductionStatusData 형식으로 변환
+        const statusData = response.data.map((plan: any) => {
+          // 진행률 계산: (총지시수량 / 계획수량) * 100
+          const achievementRate = plan.planQuantity > 0 
+            ? Math.round((plan.totalOrderQuantity / plan.planQuantity) * 100) 
+            : 0;
+          
+          // 효율성 계산: (예상시간 / 실제시간) * 100
+          const actualHrs = parseFloat(plan.actualHours || '0');
+          const estimatedHrs = parseFloat(plan.estimatedHours || '0');
+          const efficiency = actualHrs > 0 && estimatedHrs > 0
+            ? Math.round((estimatedHrs / actualHrs) * 100)
+            : 0;
+          
+          // 품질률 계산: ((총지시수량 - 잔여수량) / 총지시수량) * 100
+          // 음수 방지: Math.max(0, ...)
+          const qualityRate = plan.totalOrderQuantity > 0
+            ? Math.max(0, Math.round(((plan.totalOrderQuantity - plan.remainingQuantity) / plan.totalOrderQuantity) * 100))
+            : 0;
+
+          return {
+            id: plan.planId,
+            orderId: plan.planId,
+            productCode: plan.productCode,
+            productName: plan.productName,
+            workCenter: plan.workCenter || '-',
+            operator: plan.responsiblePerson || '-',
+            status: plan.status,
+            progress: achievementRate,
+            startTime: plan.actualStartDate || plan.plannedStartDate,
+            endTime: plan.actualEndDate || plan.plannedEndDate,
+            actualQuantity: plan.totalOrderQuantity || 0,  // 총 지시 수량
+            plannedQuantity: plan.planQuantity || 0,        // 계획 수량
+            defectQuantity: 0,  // 불량은 0으로 (실제 불량 데이터가 있다면 사용)
+            qualityRate: qualityRate,
+            efficiency: efficiency,
+            currentStep: plan.status === 'completed' ? '완료' :
+                        plan.status === 'in_progress' ? '진행중' : '대기',
+            nextStep: plan.status === 'completed' ? '-' : '다음 단계',
+            issues: [],
+            notes: `총 지시: ${plan.workOrderCount}, 진행중: ${plan.inProgressOrderCount}, 완료: ${plan.completedOrderCount}, 잔여: ${plan.remainingQuantity}`,
+            createdAt: plan.plannedStartDate,
+            updatedAt: plan.actualEndDate || plan.plannedEndDate
+          };
+        });
+        setProductionData(statusData);
+      } else {
+        setError(response.error || '데이터를 불러오는데 실패했습니다.');
+        // 에러 시 초기 데이터 사용
+        setProductionData(INITIAL_DATA);
+      }
+    } catch (err) {
+      console.error('생산현황 데이터 로드 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+      // 에러 시 초기 데이터 사용
+      setProductionData(INITIAL_DATA);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleEdit = useCallback((id: number) => {
-    const item = productionData.find(d => d.id === id);
-    if (item) {
-      setFormData(item);
-      setEditingId(id);
-      setShowForm(true);
-    }
-  }, [productionData]);
-
-  const handleDelete = useCallback((id: number) => {
-    if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setProductionData(prev => prev.filter(d => d.id !== id));
-    }
-  }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.orderId || !formData.productCode || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as ProductionStatusData;
-      setProductionData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...productionData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now,
-        issues: formData.issues || []
-      } as ProductionStatusData;
-      setProductionData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, productionData]);
-
-  const handleCloseForm = useCallback(() => {
-    setShowForm(false);
-    setFormData({});
-    setEditingId(null);
-  }, []);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['progress', 'actualQuantity', 'plannedQuantity', 'defectQuantity', 'qualityRate', 'efficiency'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadProductionData();
+  }, [loadProductionData]);
 
   // 통계 계산
   const totalOrders = productionData.length;
@@ -213,6 +221,26 @@ const ProductionStatusInfo: React.FC = () => {
   const averageEfficiency = productionData.length > 0 
     ? Math.round(productionData.reduce((sum, item) => sum + item.efficiency, 0) / productionData.length)
     : 0;
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={STYLES.content}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '50vh',
+            fontSize: '18px',
+            color: '#6b7280'
+          }}>
+            데이터를 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -315,40 +343,20 @@ const ProductionStatusInfo: React.FC = () => {
                   color: '#a7f3d0', 
                   marginTop: '4px',
                   margin: 0
-                }}>등록된 모든 생산현황을 확인하고 관리하세요</p>
+                }}>실시간 생산 현황을 모니터링하세요</p>
+                {error && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}>
+                    ⚠️ {error}
+                  </div>
+                )}
               </div>
-              <button
-                onClick={handleAdd}
-                style={{
-                  backgroundColor: 'white',
-                  color: '#10b981',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f0fdf4';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                }}
-              >
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span>새 현황 추가</span>
-              </button>
             </div>
           </div>
 
@@ -448,15 +456,6 @@ const ProductionStatusInfo: React.FC = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
                   }}>완료 시간</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>작업</th>
                 </tr>
               </thead>
               <tbody style={{ backgroundColor: 'white' }}>
@@ -465,8 +464,6 @@ const ProductionStatusInfo: React.FC = () => {
                     key={item.id} 
                     item={item} 
                     index={index}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
                   />
                 ))}
               </tbody>
@@ -474,16 +471,6 @@ const ProductionStatusInfo: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* 모달 */}
-      <ProductionStatusModal
-        show={showForm}
-        editingId={editingId}
-        formData={formData}
-        onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
-      />
     </div>
   );
 };

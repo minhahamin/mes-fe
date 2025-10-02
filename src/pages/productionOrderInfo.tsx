@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ProductionOrderStatCard from '../component/productionOrder/ProductionOrderStatCard';
 import ProductionOrderTableRow from '../component/productionOrder/ProductionOrderTableRow';
 import ProductionOrderModal from '../component/productionOrder/ProductionOrderModal';
 import { ProductionOrderData } from '../types/productionOrder';
+import { getBusinesses, deleteBusiness } from '../api/productionOrderApi';
 
 // 스타일 상수
 const STYLES = {
@@ -78,7 +79,7 @@ const INITIAL_DATA: ProductionOrderData[] = [
     startDate: '2024-01-20',
     endDate: '2024-01-30',
     status: 'approved',
-    priority: 'medium',
+    priority: 'normal',
     workCenter: 'B라인',
     supervisor: '박감독',
     operator: '최작업',
@@ -139,10 +140,41 @@ const INITIAL_DATA: ProductionOrderData[] = [
 
 const ProductionOrderInfo: React.FC = () => {
   // 상태 관리
-  const [productionData, setProductionData] = useState<ProductionOrderData[]>(INITIAL_DATA);
+  const [productionData, setProductionData] = useState<ProductionOrderData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ProductionOrderData>>({});
   const [showForm, setShowForm] = useState(false);
+
+  // 데이터 로드
+  const loadProductionData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getBusinesses();
+      
+      if (response.success && response.data) {
+        setProductionData(response.data);
+      } else {
+        setError(response.error || '데이터를 불러오는데 실패했습니다.');
+        // 에러 시 초기 데이터 사용
+        setProductionData(INITIAL_DATA);
+      }
+    } catch (err) {
+      console.error('생산지시 데이터 로드 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+      // 에러 시 초기 데이터 사용
+      setProductionData(INITIAL_DATA);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadProductionData();
+  }, [loadProductionData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -160,40 +192,26 @@ const ProductionOrderInfo: React.FC = () => {
     }
   }, [productionData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setProductionData(prev => prev.filter(d => d.id !== id));
+      try {
+        setLoading(true);
+        const response = await deleteBusiness(id);
+        if (response.success) {
+          // 로컬 상태에서도 제거
+          setProductionData(prev => prev.filter(d => d.id !== id));
+          alert('생산지시 정보가 성공적으로 삭제되었습니다.');
+        } else {
+          alert('삭제 실패: ' + response.error);
+        }
+      } catch (error) {
+        console.error('생산지시 정보 삭제 중 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.orderId || !formData.productCode || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as ProductionOrderData;
-      setProductionData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...productionData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now,
-        materials: formData.materials || []
-      } as ProductionOrderData;
-      setProductionData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, productionData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -201,19 +219,37 @@ const ProductionOrderInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['orderQuantity', 'estimatedHours', 'actualHours'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
+  const handleFormSuccess = useCallback(() => {
+    // 폼 성공 후 데이터 새로고침
+    loadProductionData();
+    handleCloseForm();
+  }, [loadProductionData, handleCloseForm]);
 
   // 통계 계산
   const totalOrders = productionData.length;
   const inProgressOrders = productionData.filter(item => item.status === 'in_progress').length;
   const completedOrders = productionData.filter(item => item.status === 'completed').length;
   const totalQuantity = productionData.reduce((sum, item) => sum + item.orderQuantity, 0);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={STYLES.content}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '50vh',
+            fontSize: '18px',
+            color: '#6b7280'
+          }}>
+            데이터를 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -491,8 +527,7 @@ const ProductionOrderInfo: React.FC = () => {
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );
