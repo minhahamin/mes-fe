@@ -60,12 +60,13 @@ const ClaimTableRow: React.FC<ClaimTableRowProps> = ({ item, index, onEdit, onDe
   const getClaimTypeBadge = (type: string) => {
     const typeMap = {
       defect: { text: '불량', color: '#fee2e2', textColor: '#991b1b' },
-      damage: { text: '손상', color: '#fef3c7', textColor: '#d97706' },
-      wrong_item: { text: '잘못된 상품', color: '#dbeafe', textColor: '#1e40af' },
-      late_delivery: { text: '배송지연', color: '#e0e7ff', textColor: '#3730a3' },
+      delivery_delay: { text: '배송지연', color: '#e0e7ff', textColor: '#3730a3' },
+      wrong_product: { text: '잘못된 상품', color: '#dbeafe', textColor: '#1e40af' },
+      damaged: { text: '손상', color: '#fef3c7', textColor: '#d97706' },
+      missing_parts: { text: '부품 누락', color: '#fce7f3', textColor: '#be185d' },
       other: { text: '기타', color: '#f3f4f6', textColor: '#6b7280' }
     };
-    const typeInfo = typeMap[type as keyof typeof typeMap];
+    const typeInfo = typeMap[type as keyof typeof typeMap] || { text: type, color: '#f3f4f6', textColor: '#6b7280' };
     return (
       <span style={{
         display: 'inline-flex',

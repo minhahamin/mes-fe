@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ClaimStatCard from '../component/claim/ClaimStatCard';
 import ClaimTableRow from '../component/claim/ClaimTableRow';
 import ClaimModal from '../component/claim/ClaimModal';
 import { ClaimData } from '../types/claim';
+import { getBusinesses, deleteBusiness } from '../api/claimInfoApi';
 
 // 스타일 상수
 const STYLES = {
@@ -43,86 +44,37 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터
-const INITIAL_DATA: ClaimData[] = [
-  {
-    id: 1,
-    claimId: 'CLM2024001',
-    customerName: 'ABC 제조업체',
-    productCode: 'PROD001',
-    productName: '스마트폰 케이스',
-    orderNumber: 'ORD2024001',
-    claimType: 'defect',
-    claimDate: '2024-01-15',
-    claimDescription: '제품에 미세한 스크래치가 있어 품질에 불만을 제기',
-    status: 'resolved',
-    priority: 'medium',
-    assignedTo: '김고객',
-    resolutionDate: '2024-01-18',
-    resolutionDescription: '교체 제품 발송 완료',
-    compensationAmount: 25000,
-    compensationType: 'replacement',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-18'
-  },
-  {
-    id: 2,
-    claimId: 'CLM2024002',
-    customerName: 'XYZ 전자',
-    productCode: 'PROD002',
-    productName: '무선 이어폰',
-    orderNumber: 'ORD2024002',
-    claimType: 'damage',
-    claimDate: '2024-01-16',
-    claimDescription: '배송 중 포장이 손상되어 제품이 휘어짐',
-    status: 'investigating',
-    priority: 'high',
-    assignedTo: '이담당',
-    createdAt: '2024-01-16',
-    updatedAt: '2024-01-16'
-  },
-  {
-    id: 3,
-    claimId: 'CLM2024003',
-    customerName: '패션월드',
-    productCode: 'PROD003',
-    productName: '면 티셔츠',
-    orderNumber: 'ORD2024003',
-    claimType: 'wrong_item',
-    claimDate: '2024-01-17',
-    claimDescription: '주문한 색상과 다른 색상의 제품이 배송됨',
-    status: 'pending',
-    priority: 'low',
-    assignedTo: '박처리',
-    createdAt: '2024-01-17',
-    updatedAt: '2024-01-17'
-  },
-  {
-    id: 4,
-    claimId: 'CLM2024004',
-    customerName: '데스크솔루션',
-    productCode: 'PROD004',
-    productName: '노트북 스탠드',
-    orderNumber: 'ORD2024004',
-    claimType: 'late_delivery',
-    claimDate: '2024-01-18',
-    claimDescription: '약속된 배송일보다 3일 지연되어 업무에 차질',
-    status: 'rejected',
-    priority: 'urgent',
-    assignedTo: '최관리',
-    resolutionDescription: '배송 지연은 택배사 문제로 확인되어 거부',
-    compensationType: 'none',
-    createdAt: '2024-01-18',
-    updatedAt: '2024-01-20'
-  }
-];
-
 const ClaimInfo: React.FC = () => {
   // 상태 관리
-  const [claimData, setClaimData] = useState<ClaimData[]>(INITIAL_DATA);
+  const [claimData, setClaimData] = useState<ClaimData[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ClaimData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 클레임 데이터 로딩
+  const loadClaimData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setClaimData(response.data);
+      } else {
+        setError(response.error || '클레임 데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      setError('클레임 데이터를 불러오는데 실패했습니다.');
+      console.error('클레임 데이터 로딩 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadClaimData();
+  }, [loadClaimData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -140,39 +92,17 @@ const ClaimInfo: React.FC = () => {
     }
   }, [claimData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setClaimData(prev => prev.filter(d => d.id !== id));
+      const response = await deleteBusiness(id);
+      if (response.success) {
+        alert('클레임이 성공적으로 삭제되었습니다.');
+        setClaimData(prev => prev.filter(d => d.id !== id));
+      } else {
+        alert(`삭제 실패: ${response.error}`);
+      }
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.claimId || !formData.customerName || !formData.productCode) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as ClaimData;
-      setClaimData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...claimData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now
-      } as ClaimData;
-      setClaimData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, claimData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -180,13 +110,10 @@ const ClaimInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'compensationAmount' ? Number(value) : value 
-    }));
-  }, []);
+  const handleFormSuccess = useCallback(() => {
+    loadClaimData();
+    handleCloseForm();
+  }, [loadClaimData, handleCloseForm]);
 
   // 통계 계산
   const totalClaims = claimData.length;
@@ -195,7 +122,34 @@ const ClaimInfo: React.FC = () => {
   const urgentClaims = claimData.filter(c => c.priority === 'urgent').length;
   const totalCompensation = claimData
     .filter(c => c.compensationAmount)
-    .reduce((sum, c) => sum + (c.compensationAmount || 0), 0);
+    .reduce((sum, c) => {
+      const amount = typeof c.compensationAmount === 'string' 
+        ? parseFloat(c.compensationAmount) || 0 
+        : c.compensationAmount || 0;
+      return sum + amount;
+    }, 0);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <p style={{ fontSize: '18px', color: '#6b7280' }}>데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div style={STYLES.container}>
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <p style={{ fontSize: '18px', color: '#dc2626' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -455,8 +409,7 @@ const ClaimInfo: React.FC = () => {
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );

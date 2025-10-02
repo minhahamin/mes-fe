@@ -5,7 +5,7 @@ export interface ClaimData {
   productCode: string;
   productName: string;
   orderNumber: string;
-  claimType: 'defect' | 'damage' | 'wrong_item' | 'late_delivery' | 'other';
+  claimType: 'defect' | 'delivery_delay' | 'wrong_product' | 'damaged' | 'missing_parts' | 'other';
   claimDate: string;
   claimDescription: string;
   status: 'pending' | 'investigating' | 'resolved' | 'rejected';
