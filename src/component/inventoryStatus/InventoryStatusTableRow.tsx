@@ -126,10 +126,10 @@ const InventoryStatusTableRow: React.FC<InventoryStatusTableRowProps> = ({ item,
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-            {item.currentStock}개
+            {item.currentStock.toLocaleString()}개
           </div>
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            {item.minStock} / {item.maxStock}
+            {item.minStock.toLocaleString()} / {item.maxStock.toLocaleString()}
           </div>
         </div>
       </td>
@@ -152,7 +152,7 @@ const InventoryStatusTableRow: React.FC<InventoryStatusTableRowProps> = ({ item,
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {getMovementTypeBadge(item.movementType)}
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            {item.movementQuantity > 0 ? '+' : ''}{item.movementQuantity}
+            {item.movementQuantity > 0 ? '+' : ''}{item.movementQuantity.toLocaleString()}
           </div>
         </div>
       </td>

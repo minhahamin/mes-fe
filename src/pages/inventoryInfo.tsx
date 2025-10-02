@@ -1,14 +1,15 @@
-import React, { useState, useCallback } from 'react';
-import InventoryStatCard from '../component/inventory/InventoryStatCard';
-import InventoryTableRow from '../component/inventory/InventoryTableRow';
-import InventoryModal from '../component/inventory/InventoryModal';
-import { InventoryData } from '../types/inventory';
+import React, { useState, useCallback, useEffect } from 'react';
+import InventoryStatusStatCard from '../component/inventoryStatus/InventoryStatusStatCard';
+import InventoryStatusTableRow from '../component/inventoryStatus/InventoryStatusTableRow';
+import InventoryStatusModal from '../component/inventoryStatus/InventoryStatusModal';
+import { InventoryStatusData } from '../types/inventoryStatus';
+import { getBusinesses, deleteBusiness } from '../api/inventoryInfoApi';
 
 // 스타일 상수
 const STYLES = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+    background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
     padding: '24px'
   },
   content: {
@@ -26,7 +27,7 @@ const STYLES = {
   },
   iconContainer: {
     padding: '12px',
-    backgroundColor: '#059669',
+    backgroundColor: '#7c3aed',
     borderRadius: '12px',
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
   },
@@ -43,88 +44,37 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터
-const INITIAL_DATA: InventoryData[] = [
-  {
-    id: 1,
-    transactionId: 'TXN2024001',
-    productCode: 'PROD001',
-    productName: '스마트폰 케이스',
-    transactionType: 'in',
-    quantity: 50,
-    unitCost: 15000,
-    totalCost: 750000,
-    transactionDate: '2024-01-15',
-    referenceNumber: 'REF2024001',
-    location: 'A-01-01',
-    reason: '신규 입고',
-    operator: '김창고',
-    notes: '정상 입고 완료',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-15'
-  },
-  {
-    id: 2,
-    transactionId: 'TXN2024002',
-    productCode: 'PROD002',
-    productName: '무선 이어폰',
-    transactionType: 'out',
-    quantity: -25,
-    unitCost: 80000,
-    totalCost: 2000000,
-    transactionDate: '2024-01-16',
-    referenceNumber: 'REF2024002',
-    location: 'A-01-02',
-    reason: '주문 출고',
-    operator: '이배송',
-    notes: '고객 주문에 따른 출고',
-    createdAt: '2024-01-16',
-    updatedAt: '2024-01-16'
-  },
-  {
-    id: 3,
-    transactionId: 'TXN2024003',
-    productCode: 'PROD003',
-    productName: '면 티셔츠',
-    transactionType: 'adjustment',
-    quantity: -5,
-    unitCost: 8000,
-    totalCost: 40000,
-    transactionDate: '2024-01-17',
-    referenceNumber: 'REF2024003',
-    location: 'B-02-01',
-    reason: '재고 조정',
-    operator: '박관리',
-    notes: '불량품 제거',
-    createdAt: '2024-01-17',
-    updatedAt: '2024-01-17'
-  },
-  {
-    id: 4,
-    transactionId: 'TXN2024004',
-    productCode: 'PROD004',
-    productName: '노트북 스탠드',
-    transactionType: 'transfer',
-    quantity: 10,
-    unitCost: 25000,
-    totalCost: 250000,
-    transactionDate: '2024-01-18',
-    referenceNumber: 'REF2024004',
-    location: 'A-02-01',
-    reason: '창고 간 이동',
-    operator: '최이동',
-    notes: 'A창고에서 B창고로 이동',
-    createdAt: '2024-01-18',
-    updatedAt: '2024-01-18'
-  }
-];
-
 const InventoryInfo: React.FC = () => {
   // 상태 관리
-  const [inventoryData, setInventoryData] = useState<InventoryData[]>(INITIAL_DATA);
+  const [inventoryData, setInventoryData] = useState<InventoryStatusData[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<Partial<InventoryData>>({});
+  const [formData, setFormData] = useState<Partial<InventoryStatusData>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 재고 데이터 로딩
+  const loadInventoryData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getBusinesses();
+      if (response.success && response.data) {
+        setInventoryData(response.data);
+      } else {
+        setError(response.error || '재고 데이터를 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      setError('재고 데이터를 불러오는데 실패했습니다.');
+      console.error('재고 데이터 로딩 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInventoryData();
+  }, [loadInventoryData]);
 
   // 핸들러 함수들
   const handleAdd = useCallback(() => {
@@ -142,40 +92,17 @@ const InventoryInfo: React.FC = () => {
     }
   }, [inventoryData]);
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (window.confirm('정말로 삭제하시겠습니까?')) {
-      setInventoryData(prev => prev.filter(d => d.id !== id));
+      const response = await deleteBusiness(id);
+      if (response.success) {
+        alert('재고 정보가 성공적으로 삭제되었습니다.');
+        setInventoryData(prev => prev.filter(d => d.id !== id));
+      } else {
+        alert(`삭제 실패: ${response.error}`);
+      }
     }
   }, []);
-
-  const handleSave = useCallback(() => {
-    if (!formData.transactionId || !formData.productCode || !formData.productName) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    if (editingId) {
-      // 수정
-      const updatedItem = { ...formData, updatedAt: new Date().toISOString().split('T')[0] } as InventoryData;
-      setInventoryData(prev => prev.map(d => 
-        d.id === editingId ? updatedItem : d
-      ));
-    } else {
-      // 추가
-      const newId = Math.max(...inventoryData.map(d => d.id), 0) + 1;
-      const now = new Date().toISOString().split('T')[0];
-      const newItem = { 
-        ...formData, 
-        id: newId, 
-        createdAt: now, 
-        updatedAt: now,
-        totalCost: (formData.quantity || 0) * (formData.unitCost || 0)
-      } as InventoryData;
-      setInventoryData(prev => [...prev, newItem]);
-    }
-    
-    handleCloseForm();
-  }, [editingId, formData, inventoryData]);
 
   const handleCloseForm = useCallback(() => {
     setShowForm(false);
@@ -183,19 +110,41 @@ const InventoryInfo: React.FC = () => {
     setEditingId(null);
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: ['quantity', 'unitCost', 'totalCost'].includes(name) ? Number(value) : value 
-    }));
-  }, []);
+  const handleFormSuccess = useCallback(() => {
+    loadInventoryData();
+    handleCloseForm();
+  }, [loadInventoryData, handleCloseForm]);
 
   // 통계 계산
-  const totalTransactions = inventoryData.length;
-  const inTransactions = inventoryData.filter(item => item.transactionType === 'in').length;
-  const outTransactions = inventoryData.filter(item => item.transactionType === 'out').length;
-  const totalValue = inventoryData.reduce((sum, item) => sum + item.totalCost, 0);
+  const totalProducts = inventoryData.length;
+  const lowStockProducts = inventoryData.filter(item => item.currentStock <= item.minStock).length;
+  const outOfStockProducts = inventoryData.filter(item => item.currentStock === 0).length;
+  const totalValue = inventoryData.reduce((sum, item) => {
+    const value = typeof item.totalValue === 'string' ? parseFloat(item.totalValue) || 0 : item.totalValue || 0;
+    return sum + value;
+  }, 0);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div style={STYLES.container}>
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <p style={{ fontSize: '18px', color: '#6b7280' }}>데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div style={STYLES.container}>
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <p style={{ fontSize: '18px', color: '#dc2626' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={STYLES.container}>
@@ -205,12 +154,12 @@ const InventoryInfo: React.FC = () => {
           <div style={STYLES.headerContent}>
             <div style={STYLES.iconContainer}>
               <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
             <div>
-              <h1 style={STYLES.title}>재고 이동 관리</h1>
-              <p style={STYLES.subtitle}>재고 입출고 및 이동 내역을 체계적으로 관리합니다</p>
+              <h1 style={STYLES.title}>재고 조정 관리</h1>
+              <p style={STYLES.subtitle}>제품 재고 상태를 실시간으로 모니터링합니다</p>
             </div>
           </div>
           
@@ -221,52 +170,52 @@ const InventoryInfo: React.FC = () => {
             gap: '24px',
             marginBottom: '32px'
           }}>
-            <InventoryStatCard
-              title="총 거래 수"
-              value={totalTransactions}
+            <InventoryStatusStatCard
+              title="총 제품 수"
+              value={totalProducts.toLocaleString()}
               icon={
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#059669' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#7c3aed' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               }
-              color="#059669"
-              bgColor="#d1fae5"
+              color="#7c3aed"
+              bgColor="#e9d5ff"
             />
             
-            <InventoryStatCard
-              title="입고 거래"
-              value={inTransactions}
+            <InventoryStatusStatCard
+              title="재고부족 제품"
+              value={lowStockProducts.toLocaleString()}
               icon={
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#10b981' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#d97706' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               }
-              color="#10b981"
-              bgColor="#d1fae5"
+              color="#d97706"
+              bgColor="#fef3c7"
             />
             
-            <InventoryStatCard
-              title="출고 거래"
-              value={outTransactions}
+            <InventoryStatusStatCard
+              title="재고없음 제품"
+              value={outOfStockProducts.toLocaleString()}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#ef4444' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               }
               color="#ef4444"
               bgColor="#fee2e2"
             />
             
-            <InventoryStatCard
-              title="총 거래 금액"
+            <InventoryStatusStatCard
+              title="총 재고 가치"
               value={new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(totalValue)}
               icon={
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#8b5cf6' }}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#10b981' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               }
-              color="#8b5cf6"
-              bgColor="#ede9fe"
+              color="#10b981"
+              bgColor="#d1fae5"
             />
           </div>
         </div>
@@ -280,7 +229,7 @@ const InventoryInfo: React.FC = () => {
         }}>
           <div style={{
             padding: '32px',
-            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)'
+            background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)'
           }}>
             <div style={{ 
               display: 'flex', 
@@ -293,18 +242,18 @@ const InventoryInfo: React.FC = () => {
                   fontWeight: 'bold', 
                   color: 'white',
                   margin: 0
-                }}>재고 이동 목록</h2>
+                }}>재고 상태 목록</h2>
                 <p style={{ 
-                  color: '#a7f3d0', 
+                  color: '#c4b5fd', 
                   marginTop: '4px',
                   margin: 0
-                }}>등록된 모든 재고 이동 내역을 확인하고 관리하세요</p>
+                }}>등록된 모든 제품의 재고 상태를 확인하고 관리하세요</p>
               </div>
               <button
                 onClick={handleAdd}
                 style={{
                   backgroundColor: 'white',
-                  color: '#059669',
+                  color: '#7c3aed',
                   padding: '12px 24px',
                   borderRadius: '12px',
                   fontWeight: '600',
@@ -317,7 +266,7 @@ const InventoryInfo: React.FC = () => {
                   transition: 'all 0.2s ease'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f0fdf4';
+                  e.currentTarget.style.backgroundColor = '#faf5ff';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                   e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
                 }}
@@ -330,7 +279,7 @@ const InventoryInfo: React.FC = () => {
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span>새 이동 추가</span>
+                <span>새 재고 추가</span>
               </button>
             </div>
           </div>
@@ -349,15 +298,6 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>거래 정보</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
                   }}>제품 정보</th>
                   <th style={{
                     padding: '16px 32px',
@@ -367,7 +307,7 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>거래 유형</th>
+                  }}>카테고리</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -376,7 +316,7 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>수량/단가</th>
+                  }}>재고 수량</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -385,16 +325,7 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>총 비용</th>
-                  <th style={{
-                    padding: '16px 32px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>거래일</th>
+                  }}>상태</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -412,7 +343,7 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>사유</th>
+                  }}>공급업체</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -421,7 +352,25 @@ const InventoryInfo: React.FC = () => {
                     color: '#374151',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
-                  }}>담당자</th>
+                  }}>총 가치</th>
+                  <th style={{
+                    padding: '16px 32px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>마지막 업데이트</th>
+                  <th style={{
+                    padding: '16px 32px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>최근 이동</th>
                   <th style={{
                     padding: '16px 32px',
                     textAlign: 'left',
@@ -435,7 +384,7 @@ const InventoryInfo: React.FC = () => {
               </thead>
               <tbody style={{ backgroundColor: 'white' }}>
                 {inventoryData.map((item, index) => (
-                  <InventoryTableRow 
+                  <InventoryStatusTableRow 
                     key={item.id} 
                     item={item} 
                     index={index}
@@ -450,13 +399,12 @@ const InventoryInfo: React.FC = () => {
       </div>
 
       {/* 모달 */}
-      <InventoryModal
+      <InventoryStatusModal
         show={showForm}
         editingId={editingId}
         formData={formData}
         onClose={handleCloseForm}
-        onSave={handleSave}
-        onInputChange={handleInputChange}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );

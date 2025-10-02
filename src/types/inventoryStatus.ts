@@ -6,7 +6,6 @@ export interface InventoryStatusData {
   currentStock: number;
   minStock: number;
   maxStock: number;
-  reorderPoint: number;
   status: 'sufficient' | 'low' | 'out_of_stock' | 'overstock';
   lastUpdated: string;
   location: string;
