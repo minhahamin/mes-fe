@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend-url.com/:path*"
+      "destination": "https://mes-be-production.up.railway.app/:path*"
     },
     {
       "source": "/(.*)",

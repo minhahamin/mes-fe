@@ -32,13 +32,13 @@ export default defineConfig({
     cors: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'https://mes-be-production.up.railway.app',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/ws': {
-        target: process.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000',
+        target: process.env.VITE_WEBSOCKET_URL || 'wss://mes-be-production.up.railway.app',
         ws: true,
         changeOrigin: true,
       },
