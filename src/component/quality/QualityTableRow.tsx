@@ -132,7 +132,7 @@ const QualityTableRow: React.FC<QualityTableRowProps> = ({ item, index, onEdit, 
             fontWeight: '500',
             color: getPassRateColor(item.passRate)
           }}>
-            {item.passRate.toFixed(1)}%
+            {(typeof item.passRate === 'string' ? parseFloat(item.passRate) : item.passRate).toFixed(1)}%
           </div>
         </div>
       </td>

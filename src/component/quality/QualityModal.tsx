@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { QualityData } from '../../types/quality';
+import { createBusiness, updateBusiness } from '../../api/qualityInfoApi';
+import ProductSearchModal from './ProductSearchModal';
 
 interface QualityModalProps {
   show: boolean;
   editingId: number | null;
   formData: Partial<QualityData>;
   onClose: () => void;
-  onSave: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onSuccess: () => void;
 }
 
 const QualityModal: React.FC<QualityModalProps> = ({ 
@@ -15,9 +16,123 @@ const QualityModal: React.FC<QualityModalProps> = ({
   editingId, 
   formData, 
   onClose, 
-  onSave, 
-  onInputChange 
+  onSuccess 
 }) => {
+  const [currentFormData, setCurrentFormData] = useState<Partial<QualityData>>(formData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+
+  React.useEffect(() => {
+    setCurrentFormData(formData);
+    setError(null);
+  }, [formData, show]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (['quantityInspected', 'quantityPassed', 'quantityFailed'].includes(name)) {
+      const numericValue = value.replace(/,/g, '');
+      const numValue = numericValue === '' ? 0 : Number(numericValue) || 0;
+      
+      setCurrentFormData(prev => ({ 
+        ...prev, 
+        [name]: numValue
+      }));
+    } else {
+      setCurrentFormData(prev => ({ 
+        ...prev, 
+        [name]: value 
+      }));
+    }
+  }, []);
+
+  const formatNumber = useCallback((value: number | string | undefined) => {
+    if (value === undefined || value === null || value === '') return '';
+    const num = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+    return isNaN(num) ? '' : num.toLocaleString('ko-KR');
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!currentFormData.productCode || !currentFormData.productName) {
+      setError('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // passRate 자동 계산
+      const quantityInspected = currentFormData.quantityInspected || 0;
+      const quantityPassed = currentFormData.quantityPassed || 0;
+      const passRate = quantityInspected > 0 
+        ? (quantityPassed / quantityInspected) * 100 
+        : 0;
+
+      const dataToSend = {
+        ...currentFormData,
+        passRate: passRate,
+        inspector: currentFormData.inspector || '',
+        qualityId: currentFormData.qualityId || '',
+        batchNumber: currentFormData.batchNumber || ''
+      };
+
+      if (editingId) {
+        // 수정
+        const { id, ...updateData } = dataToSend as any;
+        
+        const response = await updateBusiness({ ...updateData, id: editingId });
+        
+        if (response.success) {
+          alert(response.message || '품질검사 정보가 성공적으로 수정되었습니다.');
+          onSuccess();
+        } else {
+          const errorMsg = response.error || '수정에 실패했습니다.';
+          setError(errorMsg);
+          alert(errorMsg);
+        }
+      } else {
+        // 생성
+        const { id, ...createData } = dataToSend as any;
+        
+        const response = await createBusiness(createData);
+        
+        if (response.success) {
+          alert(response.message || '품질검사 정보가 성공적으로 생성되었습니다.');
+          onSuccess();
+        } else {
+          const errorMsg = response.error || '생성에 실패했습니다.';
+          setError(errorMsg);
+          alert(errorMsg);
+        }
+      }
+    } catch (err) {
+      console.error('품질검사 저장 실패:', err);
+      const errorMsg = '저장 중 오류가 발생했습니다.';
+      setError(errorMsg);
+      alert(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentFormData, editingId, onSuccess]);
+
+  const handleOpenProductSearch = useCallback(() => {
+    setShowProductSearch(true);
+  }, []);
+
+  const handleCloseProductSearch = useCallback(() => {
+    setShowProductSearch(false);
+  }, []);
+
+  const handleProductSelect = useCallback((product: any) => {
+    setCurrentFormData(prev => ({
+      ...prev,
+      productCode: product.productCode,
+      productName: product.productName
+    }));
+  }, []);
+
   if (!show) return null;
 
   return (
@@ -76,14 +191,14 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   color: 'white',
                   margin: 0
                 }}>
-                  {editingId ? '품질 검사 정보 수정' : '새 품질 검사 추가'}
+                  {editingId ? '품질검사 수정' : '새 품질검사 추가'}
                 </h3>
                 <p style={{ 
                   color: '#a5f3fc', 
                   marginTop: '4px',
                   margin: 0
                 }}>
-                  {editingId ? '기존 품질 검사 정보를 수정합니다' : '새로운 품질 검사 정보를 입력합니다'}
+                  {editingId ? '기존 품질검사 정보를 수정합니다' : '새로운 품질검사 정보를 입력합니다'}
                 </p>
               </div>
             </div>
@@ -114,6 +229,23 @@ const QualityModal: React.FC<QualityModalProps> = ({
           </div>
         </div>
 
+        {/* 에러 메시지 */}
+        {error && (
+          <div style={{
+            padding: '16px 32px',
+            backgroundColor: '#fef2f2',
+            borderBottom: '1px solid #fecaca'
+          }}>
+            <div style={{
+              color: '#dc2626',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
+              ⚠️ {error}
+            </div>
+          </div>
+        )}
+
         {/* 모달 바디 */}
         <div style={{ padding: '32px' }}>
           <form style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -129,12 +261,12 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>검사 ID *</label>
+                }}>검사 ID</label>
                 <input
                   type="text"
                   name="qualityId"
-                  value={formData.qualityId || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.qualityId || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -154,7 +286,6 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
                   placeholder="Q2024001"
-                  required
                 />
               </div>
               <div>
@@ -168,8 +299,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 <input
                   type="text"
                   name="productCode"
-                  value={formData.productCode || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.productCode || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -200,32 +331,68 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   color: '#374151', 
                   marginBottom: '8px' 
                 }}>제품명 *</label>
-                <input
-                  type="text"
-                  name="productName"
-                  value={formData.productName || ''}
-                  onChange={onInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#06b6d4';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(6, 182, 212, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                  }}
-                  placeholder="제품명을 입력하세요"
-                  required
-                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    name="productName"
+                    value={currentFormData.productName || ''}
+                    onChange={handleInputChange}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#06b6d4';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(6, 182, 212, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#d1d5db';
+                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                    placeholder="스마트폰 케이스"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={handleOpenProductSearch}
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: '#06b6d4',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0891b2';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = '#06b6d4';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    검색
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={{ 
@@ -234,12 +401,12 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>배치번호 *</label>
+                }}>배치번호</label>
                 <input
                   type="text"
                   name="batchNumber"
-                  value={formData.batchNumber || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.batchNumber || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -259,7 +426,6 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
                   placeholder="BATCH001"
-                  required
                 />
               </div>
               <div>
@@ -273,8 +439,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 <input
                   type="date"
                   name="inspectionDate"
-                  value={formData.inspectionDate || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.inspectionDate || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -303,12 +469,12 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   fontWeight: '600', 
                   color: '#374151', 
                   marginBottom: '8px' 
-                }}>검사원 *</label>
+                }}>검사원</label>
                 <input
                   type="text"
                   name="inspector"
-                  value={formData.inspector || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.inspector || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -327,8 +493,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="검사원명을 입력하세요"
-                  required
+                  placeholder="김품질"
                 />
               </div>
               <div>
@@ -341,8 +506,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 }}>검사 유형 *</label>
                 <select
                   name="inspectionType"
-                  value={formData.inspectionType || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.inspectionType || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -381,8 +546,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 }}>검사 상태 *</label>
                 <select
                   name="status"
-                  value={formData.status || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.status || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -420,10 +585,10 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   marginBottom: '8px' 
                 }}>검사 수량 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="quantityInspected"
-                  value={formData.quantityInspected || ''}
-                  onChange={onInputChange}
+                  value={formatNumber(currentFormData.quantityInspected)}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -442,7 +607,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="검사 수량을 입력하세요"
+                  placeholder="100"
                   required
                 />
               </div>
@@ -455,10 +620,10 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   marginBottom: '8px' 
                 }}>합격 수량 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="quantityPassed"
-                  value={formData.quantityPassed || ''}
-                  onChange={onInputChange}
+                  value={formatNumber(currentFormData.quantityPassed)}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -477,7 +642,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="합격 수량을 입력하세요"
+                  placeholder="98"
                   required
                 />
               </div>
@@ -490,10 +655,10 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   marginBottom: '8px' 
                 }}>불합격 수량 *</label>
                 <input
-                  type="number"
+                  type="text"
                   name="quantityFailed"
-                  value={formData.quantityFailed || ''}
-                  onChange={onInputChange}
+                  value={formatNumber(currentFormData.quantityFailed)}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -512,7 +677,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="불합격 수량을 입력하세요"
+                  placeholder="2"
                   required
                 />
               </div>
@@ -527,8 +692,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 <input
                   type="text"
                   name="defectType"
-                  value={formData.defectType || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.defectType || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -547,7 +712,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="불량 유형을 입력하세요"
+                  placeholder="표면 결함"
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
@@ -558,11 +723,11 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   color: '#374151', 
                   marginBottom: '8px' 
                 }}>불량 설명</label>
-                <input
-                  type="text"
+                <textarea
                   name="defectDescription"
-                  value={formData.defectDescription || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.defectDescription || ''}
+                  onChange={handleInputChange}
+                  rows={2}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -571,7 +736,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     fontSize: '14px',
                     outline: 'none',
                     transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    resize: 'vertical'
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#06b6d4';
@@ -581,7 +747,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="불량 설명을 입력하세요"
+                  placeholder="불량 상세 설명을 입력하세요"
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
@@ -595,8 +761,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
                 <input
                   type="text"
                   name="remarks"
-                  value={formData.remarks || ''}
-                  onChange={onInputChange}
+                  value={currentFormData.remarks || ''}
+                  onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -615,7 +781,7 @@ const QualityModal: React.FC<QualityModalProps> = ({
                     e.target.style.borderColor = '#d1d5db';
                     e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                   }}
-                  placeholder="비고를 입력하세요"
+                  placeholder="특이사항을 입력하세요"
                 />
               </div>
             </div>
@@ -655,7 +821,8 @@ const QualityModal: React.FC<QualityModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={onSave}
+                onClick={handleSave}
+                disabled={loading}
                 style={{
                   padding: '12px 24px',
                   background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
@@ -663,27 +830,39 @@ const QualityModal: React.FC<QualityModalProps> = ({
                   borderRadius: '12px',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  opacity: loading ? 0.6 : 1
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)';
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)';
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
                 }}
               >
-                {editingId ? '수정 완료' : '추가 완료'}
+                {loading ? '처리 중...' : editingId ? '수정 완료' : '추가 완료'}
               </button>
             </div>
           </form>
         </div>
       </div>
+
+      {/* 제품 검색 모달 */}
+      <ProductSearchModal
+        show={showProductSearch}
+        onClose={handleCloseProductSearch}
+        onSelect={handleProductSelect}
+      />
     </div>
   );
 };
