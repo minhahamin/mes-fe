@@ -1,9 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import OrderWarehouseStatusStatCard from '../component/orderWarehouseStatus/OrderWarehouseStatusStatCard';
-import OrderingTableRow from '../component/orderWarehouseStatus/OrderingTableRow';
-import WarehouseTableRow from '../component/orderWarehouseStatus/WarehouseTableRow';
-import { OrderingData } from '../types/ordering';
-import { WarehouseData } from '../types/warehouse';
+import { getBusinesses } from '../api/orderWarehouseApi';
 
 // 스타일 상수
 const STYLES = {
@@ -64,116 +61,83 @@ const STYLES = {
   },
 } as const;
 
-// 더미 데이터
-const ORDERING_DATA: OrderingData[] = [
-  {
-    id: 1,
-    orderId: 'PO2024001',
-    supplierName: '스테인리스 강판 공급업체',
-    productName: '스테인리스 강판',
-    productCode: 'STEEL001',
-    quantity: 100,
-    unitPrice: 50000,
-    totalAmount: 5000000,
-    orderDate: '2024-01-15',
-    expectedDeliveryDate: '2024-01-25',
-    actualDeliveryDate: '2024-01-24',
-    status: '입고완료',
-    priority: '높음',
-    purchasePerson: '김구매',
-    paymentStatus: '완료',
-    notes: '우선 처리 필요'
-  },
-  {
-    id: 2,
-    orderId: 'PO2024002',
-    supplierName: '반도체 칩 공급업체',
-    productName: '반도체 칩',
-    productCode: 'CHIP001',
-    quantity: 1000,
-    unitPrice: 2000,
-    totalAmount: 2000000,
-    orderDate: '2024-01-20',
-    expectedDeliveryDate: '2024-01-30',
-    status: '부분입고',
-    priority: '보통',
-    purchasePerson: '이구매',
-    paymentStatus: '부분결제',
-    notes: '일부 입고 완료'
-  },
-  {
-    id: 3,
-    orderId: 'PO2024003',
-    supplierName: '포장재 공급업체',
-    productName: '포장 박스',
-    productCode: 'BOX001',
-    quantity: 5000,
-    unitPrice: 1000,
-    totalAmount: 5000000,
-    orderDate: '2024-01-25',
-    expectedDeliveryDate: '2024-02-05',
-    status: '발주됨',
-    priority: '낮음',
-    purchasePerson: '박구매',
-    paymentStatus: '미결제',
-    notes: '예정된 발주'
-  }
-];
 
-const WAREHOUSE_DATA: WarehouseData[] = [
-  {
-    id: 1,
-    warehouseId: 'WH001',
-    warehouseName: '본사 창고 A',
-    location: '경기도 안양시 동안구',
-    capacity: 10000,
-    currentStock: 7500,
-    utilizationRate: 75,
-    manager: '김창고',
-    status: 'active',
-    temperature: '20°C',
-    humidity: '60%',
-    securityLevel: 'high',
-    lastInspection: '2024-01-15',
-    nextInspection: '2024-02-15',
-    notes: 'PO2024001 발주 물품 입고 완료',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-20'
-  },
-  {
-    id: 2,
-    warehouseId: 'WH002',
-    warehouseName: '본사 창고 B',
-    location: '경기도 안양시 동안구',
-    capacity: 8000,
-    currentStock: 8000,
-    utilizationRate: 100,
-    manager: '이창고',
-    status: 'full',
-    temperature: '18°C',
-    humidity: '55%',
-    securityLevel: 'high',
-    lastInspection: '2024-01-10',
-    nextInspection: '2024-02-10',
-    notes: 'PO2024002 발주 물품 입고 대기',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-25'
-  }
-];
+    
+
+    
+    
 
 const OrderWarehouseStatusInfo: React.FC = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 데이터 로드
+  const loadStatusData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getBusinesses();
+      
+      if (response.success && response.data) {
+        setStatusData(response.data);
+      } else {
+        setError(response.error || '데이터를 불러오는데 실패했습니다.');
+        setStatusData([]);
+      }
+    } catch (err) {
+      console.error('발주입고 현황 데이터 로드 실패:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
+      setStatusData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatusData();
+  }, [loadStatusData]);
+
+  // 기간 및 검색 필터링
+  const filteredData = statusData.filter(item => {
+    // 기간 필터링
+    const orderDate = new Date(item.purchase?.orderDate);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    let periodMatch = true;
+    if (selectedPeriod === 'all') {
+      periodMatch = true;
+    } else if (selectedPeriod === 'week' && diffDays > 7) {
+      periodMatch = false;
+    } else if (selectedPeriod === 'month' && diffDays > 30) {
+      periodMatch = false;
+    } else if (selectedPeriod === 'quarter' && diffDays > 90) {
+      periodMatch = false;
+    }
+    
+    // 검색 필터링
+    let searchMatch = true;
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      searchMatch = (
+        item.purchase?.orderId?.toLowerCase().includes(search) ||
+        item.purchase?.supplierName?.toLowerCase().includes(search) ||
+        item.purchase?.productName?.toLowerCase().includes(search) ||
+        item.purchase?.productCode?.toLowerCase().includes(search)
+      );
+    }
+    
+    return periodMatch && searchMatch;
+  });
 
   // 통계 계산
-  const totalOrders = ORDERING_DATA.length;
-  const completedOrders = ORDERING_DATA.filter(order => order.status === '입고완료').length;
-  const partialOrders = ORDERING_DATA.filter(order => order.status === '부분입고').length;
-  const pendingOrders = ORDERING_DATA.filter(order => order.status === '발주됨').length;
-  
-  const totalWarehouses = WAREHOUSE_DATA.length;
-  const activeWarehouses = WAREHOUSE_DATA.filter(wh => wh.status === 'active').length;
-  const fullWarehouses = WAREHOUSE_DATA.filter(wh => wh.status === 'full').length;
-  const avgUtilization = WAREHOUSE_DATA.reduce((sum, wh) => sum + wh.utilizationRate, 0) / WAREHOUSE_DATA.length;
+  const totalOrders = filteredData.length;
+  const avgReceiptRate = filteredData.length > 0
+    ? filteredData.reduce((sum, item) => sum + (item.receiptSummary?.receiptRate || 0), 0) / filteredData.length
+    : 0;
 
 
   return (
@@ -217,7 +181,37 @@ const OrderWarehouseStatusInfo: React.FC = () => {
                 }}>발주관리와 입고관리의 연계 현황을 종합적으로 조회합니다</p>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="발주 ID, 공급업체, 제품명 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    padding: '12px 40px 12px 16px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    minWidth: '300px',
+                    outline: 'none'
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#6b7280'
+                }}>
+                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -232,6 +226,7 @@ const OrderWarehouseStatusInfo: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
+                <option value="all">전체</option>
                 <option value="week">최근 1주</option>
                 <option value="month">최근 1개월</option>
                 <option value="quarter">최근 3개월</option>
@@ -240,10 +235,21 @@ const OrderWarehouseStatusInfo: React.FC = () => {
           </div>
 
           {/* 통계 카드 */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             <OrderWarehouseStatusStatCard
-              title="평균 창고 사용률"
-              value={`${avgUtilization.toFixed(1)}%`}
+              title="총 발주 건수"
+              value={totalOrders}
+              icon={
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#10b981' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              }
+              color="#10b981"
+              bgColor="#d1fae5"
+            />
+            <OrderWarehouseStatusStatCard
+              title="평균 입고율"
+              value={`${avgReceiptRate.toFixed(1)}%`}
               icon={
                 <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#0ea5e9' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -253,181 +259,233 @@ const OrderWarehouseStatusInfo: React.FC = () => {
               bgColor="#f0f9ff"
             />
           </div>
+          
+          {error && (
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              borderRadius: '8px',
+              fontSize: '14px',
+              marginBottom: '24px'
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
         </div>
 
-        {/* 발주 현황 테이블 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          marginBottom: '24px'
-        }}>
+        {/* 통합 발주-입고 현황 테이블 */}
+        {loading ? (
           <div style={{
-            padding: '32px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            padding: '80px',
+            textAlign: 'center',
+            color: '#6b7280'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px'
-              }}>
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h2 style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'white',
-                margin: 0
-              }}>발주 현황</h2>
-            </div>
+            데이터를 불러오는 중...
           </div>
-          <table style={STYLES.table}>
-            <thead>
-              <tr>
-                <th style={STYLES.th}>발주 ID</th>
-                <th style={STYLES.th}>공급업체</th>
-                <th style={STYLES.th}>제품명</th>
-                <th style={STYLES.th}>수량</th>
-                <th style={STYLES.th}>금액</th>
-                <th style={STYLES.th}>발주일</th>
-                <th style={STYLES.th}>예상납기</th>
-                <th style={STYLES.th}>상태</th>
-                <th style={STYLES.th}>우선순위</th>
-                <th style={STYLES.th}>담당자</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ORDERING_DATA.map((order, index) => (
-                <OrderingTableRow 
-                  key={order.id} 
-                  item={order} 
-                  index={index}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 입고 현황 테이블 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          marginBottom: '24px'
-        }}>
+        ) : (
           <div style={{
-            padding: '32px',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px'
-              }}>
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <h2 style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'white',
-                margin: 0
-              }}>입고 현황</h2>
-            </div>
-          </div>
-          <table style={STYLES.table}>
-            <thead>
-              <tr>
-                <th style={STYLES.th}>창고 ID</th>
-                <th style={STYLES.th}>창고명</th>
-                <th style={STYLES.th}>위치</th>
-                <th style={STYLES.th}>용량</th>
-                <th style={STYLES.th}>현재 재고</th>
-                <th style={STYLES.th}>사용률</th>
-                <th style={STYLES.th}>상태</th>
-                <th style={STYLES.th}>담당자</th>
-                <th style={STYLES.th}>환경</th>
-                <th style={STYLES.th}>보안</th>
-              </tr>
-            </thead>
-            <tbody>
-              {WAREHOUSE_DATA.map((warehouse, index) => (
-                <WarehouseTableRow 
-                  key={warehouse.id} 
-                  item={warehouse} 
-                  index={index}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 연계 현황 요약 */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            padding: '32px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                padding: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px'
-              }}>
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </div>
-              <h2 style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'white',
-                margin: 0
-              }}>발주-입고 연계 현황</h2>
-            </div>
-          </div>
-          <div style={{ padding: '32px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
-                입고 완료된 발주
-              </h3>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                {ORDERING_DATA.filter(order => order.status === '입고완료').map(order => (
-                  <div key={order.id} style={{ marginBottom: '8px', padding: '8px', backgroundColor: '#f0fdf4', borderRadius: '6px' }}>
-                    <strong>{order.orderId}</strong> - {order.productName} ({order.quantity}개)
-                  </div>
-                ))}
+            <div style={{
+              padding: '32px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  padding: '8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px'
+                }}>
+                  <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'white' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    margin: 0
+                  }}>발주-입고 통합 현황</h2>
+                  <p style={{
+                    color: '#bfdbfe',
+                    margin: 0,
+                    fontSize: '14px'
+                  }}>발주별 입고 진행 상황을 확인하세요</p>
+                </div>
               </div>
             </div>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px' }}>
-                입고 대기 중인 발주
-              </h3>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                {ORDERING_DATA.filter(order => order.status !== '입고완료').map(order => (
-                  <div key={order.id} style={{ marginBottom: '8px', padding: '8px', backgroundColor: '#fef3c7', borderRadius: '6px' }}>
-                    <strong>{order.orderId}</strong> - {order.productName} ({order.quantity}개) - {order.status}
-                  </div>
-                ))}
-              </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={STYLES.table}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f9fafb' }}>
+                    <th style={STYLES.th}>발주 정보</th>
+                    <th style={STYLES.th}>공급업체</th>
+                    <th style={STYLES.th}>제품 정보</th>
+                    <th style={STYLES.th}>발주 수량</th>
+                    <th style={STYLES.th}>입고 현황</th>
+                    <th style={STYLES.th}>입고율</th>
+                    <th style={STYLES.th}>잔여 수량</th>
+                    <th style={STYLES.th}>상태</th>
+                    <th style={STYLES.th}>입고 건수</th>
+                    <th style={STYLES.th}>예상납기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} style={{ 
+                        padding: '40px', 
+                        textAlign: 'center', 
+                        color: '#6b7280',
+                        fontSize: '14px'
+                      }}>
+                        {searchTerm ? '검색 결과가 없습니다' : '데이터가 없습니다'}
+                      </td>
+                    </tr>
+                  ) : filteredData.map((item, index) => (
+                    <tr 
+                      key={item.purchase?.orderId || index}
+                      style={{
+                        backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = index % 2 === 0 ? 'white' : '#f9fafb';
+                      }}
+                    >
+                      {/* 발주 정보 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '12px'
+                          }}>
+                            <span style={{ color: 'white', fontWeight: 'bold', fontSize: '12px' }}>
+                              {item.purchase?.orderId?.slice(-2) || 'PO'}
+                            </span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                              {item.purchase?.orderId}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              {item.purchase?.orderDate}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      {/* 공급업체 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {item.purchase?.supplierName}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {item.purchase?.supplierId}
+                          </div>
+                        </div>
+                      </td>
+                      {/* 제품 정보 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {item.purchase?.productName}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {item.purchase?.productCode}
+                          </div>
+                        </div>
+                      </td>
+                      {/* 발주 수량 */}
+                      <td style={{ padding: '24px 16px', fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                        {(item.purchase?.orderQuantity || 0).toLocaleString('ko-KR')}개
+                      </td>
+                      {/* 입고 현황 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                          총 입고: {(item.receiptSummary?.totalReceivedQuantity || 0).toLocaleString('ko-KR')}개
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          완료: {item.receiptSummary?.completedQuantity || 0}개
+                        </div>
+                      </td>
+                      {/* 입고율 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: (item.receiptSummary?.receiptRate || 0) >= 100 ? '#d1fae5' :
+                                          (item.receiptSummary?.receiptRate || 0) >= 50 ? '#fef3c7' : '#fee2e2',
+                          color: (item.receiptSummary?.receiptRate || 0) >= 100 ? '#065f46' :
+                                 (item.receiptSummary?.receiptRate || 0) >= 50 ? '#d97706' : '#991b1b'
+                        }}>
+                          {(item.receiptSummary?.receiptRate || 0).toFixed(1)}%
+                        </div>
+                      </td>
+                      {/* 잔여 수량 */}
+                      <td style={{ padding: '24px 16px', fontSize: '14px', color: '#6b7280' }}>
+                        {(item.receiptSummary?.remainingQuantity || 0).toLocaleString('ko-KR')}개
+                      </td>
+                      {/* 상태 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          backgroundColor: item.purchase?.status === 'completed' ? '#d1fae5' :
+                                          item.purchase?.status === 'ordered' ? '#dbeafe' : '#fef3c7',
+                          color: item.purchase?.status === 'completed' ? '#065f46' :
+                                 item.purchase?.status === 'ordered' ? '#1e40af' : '#d97706'
+                        }}>
+                          {item.purchase?.status === 'completed' ? '완료' :
+                           item.purchase?.status === 'ordered' ? '발주됨' :
+                           item.purchase?.status === 'pending' ? '대기' : item.purchase?.status}
+                        </span>
+                      </td>
+                      {/* 입고 건수 */}
+                      <td style={{ padding: '24px 16px' }}>
+                        <div style={{ fontSize: '14px', color: '#111827' }}>
+                          총: {item.receiptSummary?.receiptCount || 0}건
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          완료: {item.receiptSummary?.completedReceiptCount || 0}건
+                        </div>
+                      </td>
+                      {/* 예상납기 */}
+                      <td style={{ padding: '24px 16px', fontSize: '14px', color: '#6b7280' }}>
+                        {item.purchase?.expectedDeliveryDate}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
