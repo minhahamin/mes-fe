@@ -1,19 +1,38 @@
 import React from 'react';
 import { ProductData } from '../../types/product';
 
+interface InventoryDetail {
+  currentStock: number;
+  minStock: number;
+  maxStock: number;
+  reorderPoint: number;
+  status: string;
+  location: string;
+  unitCost: string;
+  totalValue: string;
+  lastMovementDate: string | null;
+  movementType: string;
+  movementQuantity: number;
+}
+
+interface ProductWithInventory extends ProductData {
+  inventoryDetail?: InventoryDetail;
+}
+
 interface ProductTableRowProps {
-  item: ProductData;
+  item: ProductWithInventory;
   index: number;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
 const ProductTableRow: React.FC<ProductTableRowProps> = ({ item, index, onEdit, onDelete }) => {
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW'
-    }).format(amount);
+    }).format(numAmount);
   };
 
   const getStatusBadge = (status: string) => {
@@ -39,17 +58,30 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({ item, index, onEdit, 
     );
   };
 
-  const getStockStatus = (stock: number, minStock: number) => {
-    if (stock <= 0) {
-      return { text: '재고없음', color: '#fee2e2', textColor: '#991b1b' };
-    } else if (stock <= minStock) {
-      return { text: '재고부족', color: '#fef3c7', textColor: '#d97706' };
-    } else {
-      return { text: '충분', color: '#d1fae5', textColor: '#065f46' };
-    }
+  const getInventoryStatusBadge = (status: string) => {
+    const statusMap = {
+      sufficient: { text: '충분', color: '#d1fae5', textColor: '#065f46' },
+      low: { text: '부족', color: '#fef3c7', textColor: '#d97706' },
+      out_of_stock: { text: '재고없음', color: '#fee2e2', textColor: '#991b1b' },
+      excess: { text: '과재고', color: '#e0e7ff', textColor: '#3730a3' }
+    };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { text: status, color: '#f3f4f6', textColor: '#6b7280' };
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '2px 8px',
+        borderRadius: '9999px',
+        fontSize: '10px',
+        fontWeight: '500',
+        backgroundColor: statusInfo.color,
+        color: statusInfo.textColor,
+        width: 'fit-content'
+      }}>
+        {statusInfo.text}
+      </span>
+    );
   };
-
-  const stockStatus = getStockStatus(item.stock, item.minStock);
 
   return (
     <tr style={{
@@ -114,25 +146,15 @@ const ProductTableRow: React.FC<ProductTableRowProps> = ({ item, index, onEdit, 
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-            {item.stock}개
+            {item.inventoryDetail ? item.inventoryDetail.currentStock.toLocaleString() : 0}개
           </span>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '2px 8px',
-            borderRadius: '9999px',
-            fontSize: '10px',
-            fontWeight: '500',
-            backgroundColor: stockStatus.color,
-            color: stockStatus.textColor,
-            width: 'fit-content'
-          }}>
-            {stockStatus.text}
-          </span>
+          {item.inventoryDetail && getInventoryStatusBadge(item.inventoryDetail.status)}
         </div>
       </td>
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
-        {item.minStock} / {item.maxStock}
+        {item.inventoryDetail 
+          ? `${item.inventoryDetail.minStock.toLocaleString()} / ${item.inventoryDetail.maxStock.toLocaleString()}`
+          : '-'}
       </td>
       <td style={{ padding: '24px 32px', whiteSpace: 'nowrap', fontSize: '14px', color: '#6b7280' }}>
         {item.supplier}

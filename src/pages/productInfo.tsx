@@ -44,77 +44,27 @@ const STYLES = {
   }
 } as const;
 
-// 초기 데이터
-const INITIAL_DATA: ProductData[] = [
-  {
-    id: 1,
-    productCode: 'PROD001',
-    productName: '스마트폰 케이스',
-    category: '전자제품',
-    description: '고급 실리콘 소재의 스마트폰 보호 케이스',
-    unitPrice: 25000,
-    cost: 15000,
-    stock: 150,
-    minStock: 20,
-    maxStock: 200,
-    supplier: '케이스코리아',
-    status: 'active',
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-15'
-  },
-  {
-    id: 2,
-    productCode: 'PROD002',
-    productName: '무선 이어폰',
-    category: '전자제품',
-    description: '노이즈 캔슬링 기능이 있는 블루투스 이어폰',
-    unitPrice: 120000,
-    cost: 80000,
-    stock: 45,
-    minStock: 10,
-    maxStock: 100,
-    supplier: '오디오테크',
-    status: 'active',
-    createdAt: '2024-01-20',
-    updatedAt: '2024-01-20'
-  },
-  {
-    id: 3,
-    productCode: 'PROD003',
-    productName: '면 티셔츠',
-    category: '의류',
-    description: '100% 면 소재의 기본 티셔츠',
-    unitPrice: 15000,
-    cost: 8000,
-    stock: 5,
-    minStock: 15,
-    maxStock: 50,
-    supplier: '패션월드',
-    status: 'active',
-    createdAt: '2024-02-01',
-    updatedAt: '2024-02-01'
-  },
-  {
-    id: 4,
-    productCode: 'PROD004',
-    productName: '노트북 스탠드',
-    category: '전자제품',
-    description: '각도 조절 가능한 알루미늄 노트북 스탠드',
-    unitPrice: 45000,
-    cost: 25000,
-    stock: 0,
-    minStock: 5,
-    maxStock: 30,
-    supplier: '데스크솔루션',
-    status: 'inactive',
-    createdAt: '2024-01-10',
-    updatedAt: '2024-01-10'
-  }
-];
+interface InventoryDetail {
+  currentStock: number;
+  minStock: number;
+  maxStock: number;
+  reorderPoint: number;
+  status: string;
+  location: string;
+  unitCost: string;
+  totalValue: string;
+  lastMovementDate: string | null;
+  movementType: string;
+  movementQuantity: number;
+}
+
+interface ProductWithInventory extends ProductData {
+  inventoryDetail?: InventoryDetail;
+}
 
 const ProductInfo: React.FC = () => {
   // 상태 관리
-  const [productData, setProductData] = useState<ProductData[]>(INITIAL_DATA);
+  const [productData, setProductData] = useState<ProductWithInventory[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -181,14 +131,15 @@ const ProductInfo: React.FC = () => {
   // 통계 계산
   const activeProducts = productData.filter(prod => prod.status === 'active').length;
   const lowStockProducts = productData.filter(prod => {
-    const stock = typeof prod.stock === 'number' ? prod.stock : parseFloat(prod.stock as any) || 0;
-    const minStock = typeof prod.minStock === 'number' ? prod.minStock : parseFloat(prod.minStock as any) || 0;
-    return stock <= minStock;
+    if (!prod.inventoryDetail) return false;
+    return prod.inventoryDetail.currentStock <= prod.inventoryDetail.minStock;
   }).length;
   const totalValue = productData.reduce((sum, prod) => {
-    const stock = typeof prod.stock === 'number' ? prod.stock : parseFloat(prod.stock as any) || 0;
-    const unitPrice = typeof prod.unitPrice === 'number' ? prod.unitPrice : parseFloat(prod.unitPrice as any) || 0;
-    return sum + (stock * unitPrice);
+    if (!prod.inventoryDetail) return sum;
+    const value = typeof prod.inventoryDetail.totalValue === 'string' 
+      ? parseFloat(prod.inventoryDetail.totalValue) || 0 
+      : prod.inventoryDetail.totalValue || 0;
+    return sum + value;
   }, 0);
   const categories = new Set(productData.map(prod => prod.category)).size;
 

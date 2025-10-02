@@ -28,10 +28,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
         const formattedData = {
           ...initialData,
           unitPrice: initialData.unitPrice ? new Intl.NumberFormat('ko-KR').format(initialData.unitPrice) : '',
-          cost: initialData.cost ? new Intl.NumberFormat('ko-KR').format(initialData.cost) : '',
-          stock: initialData.stock ? new Intl.NumberFormat('ko-KR').format(initialData.stock) : '',
-          minStock: initialData.minStock ? new Intl.NumberFormat('ko-KR').format(initialData.minStock) : '',
-          maxStock: initialData.maxStock ? new Intl.NumberFormat('ko-KR').format(initialData.maxStock) : ''
+          cost: initialData.cost ? new Intl.NumberFormat('ko-KR').format(initialData.cost) : ''
         } as any;
         setFormData(formattedData);
       } else {
@@ -43,9 +40,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
           description: '',
           unitPrice: '',
           cost: '',
-          stock: '',
-          minStock: '',
-          maxStock: '',
           supplier: '',
           status: 'active'
         } as any);
@@ -58,7 +52,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     let formattedValue = value;
     
     // 숫자 필드 포맷팅 (천단위 구분)
-    if (['unitPrice', 'cost', 'stock', 'minStock', 'maxStock'].includes(name)) {
+    if (['unitPrice', 'cost'].includes(name)) {
       const numericValue = value.replace(/[^\d]/g, '');
       if (numericValue) {
         formattedValue = new Intl.NumberFormat('ko-KR').format(Number(numericValue));
@@ -94,15 +88,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
         cost: typeof formData.cost === 'string' 
           ? Number((formData.cost as string).replace(/[^\d]/g, '')) 
           : (formData.cost || 0),
-        stock: typeof formData.stock === 'string' 
-          ? Number((formData.stock as string).replace(/[^\d]/g, '')) 
-          : (formData.stock || 0),
-        minStock: typeof formData.minStock === 'string' 
-          ? Number((formData.minStock as string).replace(/[^\d]/g, '')) 
-          : (formData.minStock || 0),
-        maxStock: typeof formData.maxStock === 'string' 
-          ? Number((formData.maxStock as string).replace(/[^\d]/g, '')) 
-          : (formData.maxStock || 0)
+        stock: 0,
+        minStock: 0,
+        maxStock: 0
       };
       
       console.log('제출할 데이터:', submitData);
@@ -481,108 +469,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
                       e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
                     }}
                     placeholder="15,000"
-                  />
-                </div>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151', 
-                    marginBottom: '8px' 
-                  }}>재고</label>
-                  <input
-                    type="text"
-                    name="stock"
-                    value={formData.stock || ''}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#f59e0b';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
-                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                    }}
-                    placeholder="150"
-                  />
-                </div>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151', 
-                    marginBottom: '8px' 
-                  }}>최소재고</label>
-                  <input
-                    type="text"
-                    name="minStock"
-                    value={formData.minStock || ''}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#f59e0b';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
-                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                    }}
-                    placeholder="20"
-                  />
-                </div>
-                <div>
-                  <label style={{ 
-                    display: 'block', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    color: '#374151', 
-                    marginBottom: '8px' 
-                  }}>최대재고</label>
-                  <input
-                    type="text"
-                    name="maxStock"
-                    value={formData.maxStock || ''}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#f59e0b';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#d1d5db';
-                      e.target.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
-                    }}
-                    placeholder="200"
                   />
                 </div>
                 <div>
