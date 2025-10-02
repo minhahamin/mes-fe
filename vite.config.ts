@@ -1,9 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
   plugins: [react()],
   
   // Environment variables configuration
@@ -32,13 +35,13 @@ export default defineConfig({
     cors: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'https://mes-be-production.up.railway.app',
+        target: env.VITE_API_BASE_URL || 'https://mes-be-production.up.railway.app',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/ws': {
-        target: process.env.VITE_WEBSOCKET_URL || 'wss://mes-be-production.up.railway.app',
+        target: env.VITE_WEBSOCKET_URL || 'wss://mes-be-production.up.railway.app',
         ws: true,
         changeOrigin: true,
       },
@@ -60,7 +63,7 @@ export default defineConfig({
   
   // Environment variables
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+    __APP_VERSION__: JSON.stringify('1.0.0'),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   
@@ -73,4 +76,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom'],
   },
+  };
 });
